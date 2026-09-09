@@ -1,0 +1,1351 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#070b14">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;700&display=swap" rel="stylesheet">
+<link rel="manifest" href="/manifest.webmanifest">
+<link rel="apple-touch-icon" href="/apple-touch-icon.png">
+<link rel="icon" href="/icone-192.png" type="image/png">
+<meta name="apple-mobile-web-app-title" content="Braquage">
+<title>Le Braquage</title>
+<style>
+:root{
+  /* nuit d'encre */
+  --encre:#070b14; --encre2:#0d1424; --marbre:#131c30; --marbre2:#1b2740;
+  /* laiton & or */
+  --or:#e3c05c; --or-clair:#fff3c4; --or-f:#8a6d18; --or-tres-f:#4a3a0c;
+  /* accents */
+  --sang:#d43a2c; --sang-f:#6e1810;
+  --jade:#31b98a; --lagon:#2aa5c9; --amethyste:#a273e0; --nuitbleu:#3d7fd6;
+  --ambre:#e89234; --fuchsia:#e8397f;
+  --papier:#f4ecd8; --brume:#8d9ab5;
+  --ombre:0 14px 38px rgba(0,0,0,.7);
+}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{margin:0;padding:0;height:100%;overflow:hidden}
+body{
+  background:var(--encre); color:var(--papier);
+  font-family:"Avenir Next","Segoe UI",system-ui,-apple-system,Roboto,sans-serif;
+  overscroll-behavior:none;-webkit-user-select:none;user-select:none;
+}
+.deco{font-family:"Cinzel",Georgia,"Times New Roman",serif;letter-spacing:.16em}
+.chiffre{font-family:"Cinzel",Georgia,serif;font-weight:700;font-variant-numeric:lining-nums}
+
+/* ---------- fond : marbre sombre + trame art déco ---------- */
+#fond{position:fixed;inset:0;z-index:0;
+  background:
+    radial-gradient(ellipse at 50% 8%,rgba(227,192,92,.11),transparent 58%),
+    radial-gradient(ellipse at 50% 100%,rgba(61,127,214,.07),transparent 55%),
+    linear-gradient(180deg,var(--encre) 0%,var(--marbre) 55%,var(--encre) 100%)}
+#fond::after{content:"";position:absolute;inset:0;opacity:.16;
+  background-image:
+    repeating-linear-gradient(60deg,rgba(227,192,92,.16) 0 1px,transparent 1px 26px),
+    repeating-linear-gradient(-60deg,rgba(227,192,92,.16) 0 1px,transparent 1px 26px)}
+#app{position:relative;z-index:1;height:100%;display:flex;flex-direction:column;
+  padding:calc(env(safe-area-inset-top) + 8px) 11px calc(env(safe-area-inset-bottom) + 10px)}
+
+/* ---------- typo & filets ---------- */
+.titre{font-family:"Cinzel",Georgia,serif;font-weight:700;letter-spacing:.2em;text-align:center;
+  color:var(--or-clair);line-height:1.06;
+  text-shadow:0 1px 0 #000,0 0 28px rgba(227,192,92,.5)}
+h1.titre{font-size:clamp(26px,8.6vw,40px);margin:2px 0}
+.sous{text-align:center;font-size:11.5px;color:var(--brume);letter-spacing:.22em;text-transform:uppercase}
+.etiq{font-size:10px;color:var(--brume);letter-spacing:.16em;text-transform:uppercase}
+.hint{font-size:12.5px;color:var(--brume);text-align:center;line-height:1.55}
+.centre{text-align:center}.spacer{flex:1;min-height:0}
+.scroll{overflow-y:auto;-webkit-overflow-scrolling:touch}
+/* filet art déco : trait – losange – trait */
+.filet{display:flex;align-items:center;gap:8px;margin:9px 0}
+.filet::before,.filet::after{content:"";flex:1;height:1px;
+  background:linear-gradient(90deg,transparent,var(--or-f),transparent)}
+.filet i{width:7px;height:7px;transform:rotate(45deg);background:var(--or);
+  box-shadow:0 0 8px rgba(227,192,92,.7)}
+
+/* ---------- boutons : plaques de laiton ---------- */
+button{font-family:inherit;font-size:15.5px;font-weight:700;letter-spacing:.09em;
+  text-transform:uppercase;border:none;cursor:pointer;padding:15px 16px;
+  transition:transform .09s,box-shadow .2s,filter .2s;
+  clip-path:polygon(9px 0,calc(100% - 9px) 0,100% 9px,100% calc(100% - 9px),
+    calc(100% - 9px) 100%,9px 100%,0 calc(100% - 9px),0 9px)}
+button:active{transform:translateY(2px)}
+button:focus-visible{outline:2px solid var(--or-clair);outline-offset:3px}
+.b-or{background:linear-gradient(180deg,var(--or-clair) 0%,var(--or) 42%,#a8821c 100%);
+  color:#1e1704;box-shadow:0 5px 0 #6b530f,0 14px 26px rgba(0,0,0,.55),inset 0 1px 0 rgba(255,255,255,.6)}
+.b-or:active{box-shadow:0 2px 0 #6b530f,0 7px 16px rgba(0,0,0,.55)}
+.b-vert{background:linear-gradient(180deg,#63e0ac 0%,var(--jade) 45%,#187e5c 100%);
+  color:#04231a;box-shadow:0 5px 0 #0e5b42,0 14px 26px rgba(0,0,0,.55),inset 0 1px 0 rgba(255,255,255,.45)}
+.b-vert:active{box-shadow:0 2px 0 #0e5b42,0 7px 16px rgba(0,0,0,.55)}
+.b-sombre{background:linear-gradient(180deg,rgba(255,255,255,.10),rgba(255,255,255,.03));
+  color:var(--papier);box-shadow:inset 0 0 0 1px rgba(227,192,92,.4),0 8px 18px rgba(0,0,0,.45)}
+.b-rouge{background:linear-gradient(180deg,#f0705f,var(--sang) 55%,#8d1f14);color:#2b0703;
+  box-shadow:0 5px 0 #6b1109,0 14px 26px rgba(0,0,0,.5)}
+button[disabled]{opacity:.3;pointer-events:none;box-shadow:none}
+.rangee{display:flex;gap:10px}.rangee>*{flex:1}
+
+/* ================= ACCUEIL : LA BANQUE ================= */
+#banque{position:relative;width:100%;flex:1;min-height:0;display:flex;align-items:flex-end;
+  justify-content:center;overflow:hidden}
+#banque svg{width:100%;height:100%;display:block}
+.faisceau{transform-origin:50% 100%;animation:balaye 9s ease-in-out infinite alternate;opacity:.85;will-change:transform}
+.faisceau.b2{animation-duration:12s;animation-delay:-4s}
+@keyframes balaye{0%{transform:rotate(-19deg)}100%{transform:rotate(19deg)}}
+.vitrail{animation:vacille 4.5s ease-in-out infinite}
+@keyframes vacille{0%,100%{opacity:.92}45%{opacity:.66}70%{opacity:1}}
+.etoile{animation:scintille 3.4s ease-in-out infinite}
+@keyframes scintille{0%,100%{opacity:.25}50%{opacity:.95}}
+
+/* ================= LA TABLE : PORTE DU COFFRE ================= */
+#table{position:relative;flex:1;min-height:0;margin:2px 0}
+.porte{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);
+  width:min(88vw,338px);height:min(88vw,338px);border-radius:50%;
+  background:
+    radial-gradient(circle at 34% 26%,rgba(255,255,255,.22),transparent 44%),
+    conic-gradient(from 15deg,#2c3547,#5d6a80,#5d6a80,#28303f,#59657a,#232b38,#4e5a6e,#2c3547,#5d6a80,#2c3547);
+  box-shadow:0 0 0 3px #0b0f18,0 0 0 6px var(--or-f),0 0 0 8px #070b12,
+    inset 0 0 50px rgba(0,0,0,.72),0 26px 60px rgba(0,0,0,.8),0 0 70px rgba(227,192,92,.14)}
+.porte::before{content:"";position:absolute;inset:6%;border-radius:50%;
+  border:2px solid rgba(0,0,0,.5);box-shadow:inset 0 0 0 1px rgba(255,255,255,.11)}
+.porte::after{content:"";position:absolute;inset:15%;border-radius:50%;
+  border:1px solid rgba(227,192,92,.34);box-shadow:inset 0 0 26px rgba(0,0,0,.6)}
+.boulon{position:absolute;width:12px;height:12px;border-radius:50%;
+  background:radial-gradient(circle at 34% 30%,var(--or-clair),var(--or) 45%,#6d540f 78%);
+  box-shadow:0 0 8px rgba(227,192,92,.55),inset 0 -1px 2px rgba(0,0,0,.7);
+  transform:translate(-50%,-50%)}
+.rayon{position:absolute;left:50%;top:50%;width:4px;
+  background:linear-gradient(180deg,rgba(227,192,92,.85),rgba(227,192,92,.12));
+  transform-origin:50% 0;border-radius:3px;box-shadow:0 0 10px rgba(227,192,92,.35)}
+.charniere{position:absolute;width:16px;height:36px;border-radius:4px;
+  background:linear-gradient(180deg,#7a8699,#2b3442);border:1px solid #10151f;
+  box-shadow:0 4px 10px rgba(0,0,0,.7)}
+.creux{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);
+  width:min(43vw,164px);height:min(43vw,164px);border-radius:50%;
+  background:radial-gradient(circle at 46% 36%,#111a2b,#03060c 74%);
+  box-shadow:inset 0 8px 30px rgba(0,0,0,.98),0 0 0 2px #0b0f18,
+    0 0 0 4px rgba(227,192,92,.5),0 0 34px rgba(227,192,92,.16);
+  display:flex;align-items:center;justify-content:center;cursor:pointer}
+/* halo de projecteur au-dessus de la table */
+#table::before{content:"";position:absolute;left:50%;top:-6%;transform:translateX(-50%);
+  width:78%;height:70%;pointer-events:none;
+  background:radial-gradient(ellipse at 50% 0%,rgba(227,192,92,.13),transparent 62%)}
+
+/* lampes d'alarme */
+.lampes{position:absolute;left:50%;top:50%;display:flex;gap:12px;z-index:4;
+  transform:translate(-50%,calc(-1 * min(29vw,112px)))}
+.lampe{width:27px;height:27px;border-radius:50%;border:2px solid #2b3547;background:rgba(0,0,0,.6);
+  display:flex;align-items:center;justify-content:center;transition:all .3s;position:relative}
+.lampe i{width:9px;height:9px;border-radius:50%;background:#2b3547;display:block}
+.lampe.on{border-color:var(--sang);
+  box-shadow:0 0 20px rgba(212,58,44,.9),inset 0 0 8px rgba(255,120,100,.5)}
+.lampe.on i{background:radial-gradient(circle at 35% 32%,#ffb0a4,var(--sang));
+  box-shadow:0 0 12px rgba(212,58,44,1)}
+.lampe.critique{animation:clign .8s ease-in-out infinite;will-change:transform}
+@keyframes clign{0%,100%{transform:translateZ(0) scale(1)}50%{transform:translateZ(0) scale(1.2)}}
+.lampe.critique::after{content:"";position:absolute;inset:-8px;border-radius:50%;
+  background:radial-gradient(circle,rgba(212,58,44,.75),transparent 70%);
+  animation:halo .8s ease-in-out infinite;will-change:opacity}
+@keyframes halo{0%,100%{opacity:.35}50%{opacity:1}}
+
+/* sièges : plaques de laiton gravées */
+.siege{position:absolute;transform:translate(-50%,-50%);width:76px;text-align:center;transition:all .3s}
+.jeton{position:relative;padding:6px 5px 7px;
+  background:linear-gradient(180deg,#1a2438,#0c1322);
+  box-shadow:inset 0 0 0 1px rgba(227,192,92,.35),0 7px 16px rgba(0,0,0,.6);
+  clip-path:polygon(7px 0,calc(100% - 7px) 0,100% 7px,100% calc(100% - 7px),
+    calc(100% - 7px) 100%,7px 100%,0 calc(100% - 7px),0 7px)}
+.siege.actif .jeton{background:linear-gradient(180deg,#3a3216,#1a1608);
+  box-shadow:inset 0 0 0 1px var(--or),0 0 24px rgba(227,192,92,.55),0 7px 16px rgba(0,0,0,.6)}
+.siege.actif::after{content:"";position:absolute;left:50%;top:-9px;transform:translateX(-50%) rotate(45deg);
+  width:8px;height:8px;background:var(--or);box-shadow:0 0 10px rgba(227,192,92,.9)}
+.siege.fui .jeton{box-shadow:inset 0 0 0 1px rgba(49,185,138,.6),0 7px 16px rgba(0,0,0,.6);opacity:.9}
+.siege.pris .jeton{box-shadow:inset 0 0 0 1px rgba(212,58,44,.5),0 7px 16px rgba(0,0,0,.6);opacity:.55}
+.siege .nom{font-size:10.5px;font-weight:700;letter-spacing:.07em;text-transform:uppercase;
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis;color:var(--papier)}
+.siege .sac{font-family:"Cinzel",Georgia,serif;font-size:20px;font-weight:700;color:var(--or-clair);line-height:1.2}
+.siege .tot{font-size:8.5px;color:var(--brume);letter-spacing:.08em}
+.siege .statut{font-size:8px;font-weight:800;letter-spacing:.12em}
+.siege .cartes{display:flex;gap:2px;justify-content:center;margin-top:2px;height:7px}
+.siege .pastille{width:6px;height:6px;transform:rotate(45deg)}
+
+/* ================= CARTES ================= */
+.carte{position:relative;flex:0 0 auto;padding:2px;
+  background:linear-gradient(150deg,var(--or-clair) 0%,var(--or-f) 38%,var(--or) 62%,var(--or-tres-f) 100%);
+  box-shadow:var(--ombre);
+  clip-path:polygon(10px 0,calc(100% - 10px) 0,100% 10px,100% calc(100% - 10px),
+    calc(100% - 10px) 100%,10px 100%,0 calc(100% - 10px),0 10px)}
+.carte .dedans{position:relative;height:100%;width:100%;overflow:hidden;
+  background:
+    radial-gradient(ellipse at 50% 30%,#1a2740 0%,#0a1120 62%,#050810 100%);
+  clip-path:polygon(9px 0,calc(100% - 9px) 0,100% 9px,100% calc(100% - 9px),
+    calc(100% - 9px) 100%,9px 100%,0 calc(100% - 9px),0 9px);
+  display:flex;flex-direction:column;align-items:center}
+/* trame guillochée */
+.carte .dedans::before{content:"";position:absolute;inset:0;opacity:.2;
+  background-image:repeating-linear-gradient(45deg,currentColor 0 1px,transparent 1px 9px)}
+.carte .cadre{position:absolute;inset:4px;border:1px solid currentColor;opacity:.5}
+.carte .nom-f{position:relative;font-family:"Cinzel",Georgia,serif;font-weight:700;
+  letter-spacing:.16em;text-align:center;width:100%}
+.carte .medaille{position:relative;flex:1;display:flex;align-items:center;justify-content:center;width:100%}
+.carte .soleil{position:absolute;border-radius:50%;opacity:.34;
+  background:repeating-conic-gradient(currentColor 0deg 3.4deg,transparent 3.4deg 12deg)}
+.carte .disque{position:relative;border-radius:50%;display:flex;align-items:center;justify-content:center;
+  background:radial-gradient(circle at 42% 34%,#101a2c,#05080f 72%);
+  box-shadow:0 0 0 2px currentColor,0 0 0 4px rgba(0,0,0,.55),0 0 22px rgba(0,0,0,.7),
+    inset 0 0 18px rgba(0,0,0,.85)}
+.carte .num{font-family:"Cinzel",Georgia,serif;font-weight:700;line-height:1;color:var(--papier);
+  text-shadow:0 2px 5px rgba(0,0,0,.85)}
+.carte .embleme{position:relative;display:flex;align-items:center;justify-content:center;width:100%}
+.carte .coin{position:absolute;font-family:"Cinzel",Georgia,serif;font-weight:700;opacity:.92}
+.carte .coin.hg{left:6px;top:5px}
+.carte .coin.bd{right:6px;bottom:5px;transform:rotate(180deg)}
+.carte .bas{position:relative;width:100%;text-align:center;font-family:"Cinzel",Georgia,serif;
+  letter-spacing:.12em;color:var(--brume)}
+.carte .txt{position:relative;background:var(--papier);color:#0d1220;text-align:center;
+  font-weight:600;margin:0 7px 8px;
+  clip-path:polygon(6px 0,calc(100% - 6px) 0,100% 6px,100% calc(100% - 6px),
+    calc(100% - 6px) 100%,6px 100%,0 calc(100% - 6px),0 6px)}
+
+.xl{width:min(56vw,206px);height:min(79vw,292px)}
+.xl .nom-f{font-size:11.5px;padding:11px 0 3px}
+.xl .soleil{width:150px;height:150px}
+.xl .disque{width:104px;height:104px}
+.xl .num{font-size:54px}
+.xl .embleme{height:40px;margin-bottom:2px}
+.xl .coin{font-size:14px}
+.xl .txt{font-size:10.5px;line-height:1.42;padding:8px 7px}
+.xl .bas{font-size:8.5px;padding-bottom:9px}
+
+.md{width:68px;height:95px}
+.md .nom-f{font-size:6.2px;padding:6px 0 1px}
+.md .soleil{width:56px;height:56px}
+.md .disque{width:40px;height:40px}
+.md .num{font-size:21px}
+.md .embleme{height:15px;margin-bottom:5px}
+.md .coin{font-size:7px}
+.md .coin.hg{left:3px;top:2px}.md .coin.bd{right:3px;bottom:2px}
+.md .cadre{inset:3px}
+
+.sm{width:40px;height:56px}
+.sm .nom-f{font-size:0;padding:3px 0 0}
+.sm .soleil{width:34px;height:34px}
+.sm .disque{width:25px;height:25px}
+.sm .num{font-size:13px}
+.sm .embleme{display:none}
+.sm .coin{display:none}
+.sm .cadre{inset:2px}
+
+.deck{width:min(27vw,100px);height:min(38vw,140px)}
+/* dos de carte : monogramme dans un cartouche */
+.dos .dedans{background:
+  radial-gradient(circle at 50% 42%,rgba(227,192,92,.3),transparent 62%),
+  repeating-linear-gradient(45deg,#0a1120 0 7px,#111c30 7px 14px);
+  align-items:center;justify-content:center;color:var(--or)}
+.dos .mono{position:relative;border-radius:50%;border:2px solid var(--or);
+  display:flex;align-items:center;justify-content:center;
+  font-family:"Cinzel",Georgia,serif;font-weight:700;color:var(--or-clair);
+  box-shadow:0 0 20px rgba(227,192,92,.35),inset 0 0 16px rgba(0,0,0,.7);
+  background:radial-gradient(circle at 42% 36%,#132038,#060a12 72%)}
+.deck .mono{width:52px;height:52px;font-size:19px;letter-spacing:.02em}
+.xl .mono{width:104px;height:104px;font-size:38px}
+.md .mono{width:40px;height:40px;font-size:15px}
+.sm .mono{width:26px;height:26px;font-size:10px}
+
+.pile-deck{position:relative;display:flex;align-items:center;justify-content:center}
+.pile-deck .ombre-pile{position:absolute;filter:brightness(.5)}
+.pile-deck .ombre-pile:nth-child(1){transform:translate(7px,7px) rotate(3.5deg)}
+.pile-deck .ombre-pile:nth-child(2){transform:translate(3px,3px) rotate(-2deg)}
+.pulse{animation:resp 2.8s ease-in-out infinite}
+@keyframes resp{0%,100%{transform:translateY(0)}50%{transform:translateY(-6px)}}
+
+/* ================= RÉVÉLATION ================= */
+.voile{position:fixed;inset:0;z-index:50;display:flex;flex-direction:column;align-items:center;
+  justify-content:center;padding:20px;text-align:center;overflow-y:auto;
+  background:radial-gradient(ellipse at 50% 42%,rgba(20,30,52,.97),rgba(3,5,10,.985) 70%)}
+.entree{animation:entree .5s cubic-bezier(.2,1.35,.35,1)}
+@keyframes entree{from{transform:scale(.5) rotateY(-85deg);opacity:0}
+  to{transform:scale(1) rotateY(0);opacity:1}}
+.libelle{font-family:"Cinzel",Georgia,serif;font-size:19px;font-weight:700;letter-spacing:.1em;
+  margin-top:18px;text-transform:uppercase}
+.detail{font-size:13px;color:#b7c2d8;max-width:300px;line-height:1.6;margin-top:9px}
+.mainj{display:flex;gap:7px;justify-content:center;flex-wrap:wrap}
+.mainj .carte{cursor:pointer}
+.mainj .carte.jouable{filter:drop-shadow(0 0 7px rgba(227,192,92,.85))}
+
+/* ================= EFFETS ================= */
+.flash{position:fixed;inset:0;z-index:40;pointer-events:none;opacity:0}
+.flash.rouge{background:radial-gradient(circle,rgba(255,60,45,.6),rgba(110,10,0,.85));animation:fl .55s}
+.flash.vert{background:radial-gradient(circle,rgba(49,185,138,.45),rgba(4,60,42,.6));animation:fl .55s}
+.flash.or{background:radial-gradient(circle,rgba(255,235,170,.5),rgba(90,66,0,.42));animation:fl .5s}
+@keyframes fl{0%{opacity:0}18%{opacity:1}100%{opacity:0}}
+.secoue{animation:sec .5s}
+@keyframes sec{0%,100%{transform:translate(0,0)}15%{transform:translate(-10px,3px)}
+  30%{transform:translate(9px,-3px)}45%{transform:translate(-8px,2px)}
+  60%{transform:translate(7px,-2px)}80%{transform:translate(-4px,1px)}}
+.gyro{position:fixed;inset:0;z-index:45;pointer-events:none;animation:gy .4s steps(1) 8}
+@keyframes gy{0%{background:linear-gradient(90deg,rgba(255,40,30,.55),transparent 55%)}
+  50%{background:linear-gradient(270deg,rgba(50,120,255,.55),transparent 55%)}}
+.piece{position:fixed;z-index:44;pointer-events:none;width:19px;height:19px;border-radius:50%;
+  background:radial-gradient(circle at 34% 30%,var(--or-clair),var(--or) 48%,#7d6212 82%);
+  box-shadow:0 0 10px rgba(227,192,92,.8);animation:tombe linear forwards}
+@keyframes tombe{0%{transform:translateY(-12vh) rotate(0);opacity:1}
+  100%{transform:translateY(106vh) rotate(720deg);opacity:.85}}
+.etincelle{position:fixed;z-index:44;pointer-events:none;width:6px;height:6px;
+  background:var(--or-clair);transform:rotate(45deg);animation:etin .8s ease-out forwards}
+@keyframes etin{0%{transform:translate(0,0) rotate(45deg) scale(1);opacity:1}
+  100%{transform:translate(var(--dx),var(--dy)) rotate(220deg) scale(0);opacity:0}}
+.vol-carte{position:fixed;z-index:47;pointer-events:none;
+  transition:transform .78s cubic-bezier(.32,.72,.28,1),opacity .78s}
+.gagne{animation:gagne .55s ease-out}
+@keyframes gagne{0%{transform:scale(1)}38%{transform:scale(1.55);text-shadow:0 0 20px var(--or-clair)}
+  100%{transform:scale(1)}}
+
+/* ================= PANNEAUX & LISTES ================= */
+.panneau{position:relative;background:linear-gradient(180deg,rgba(255,255,255,.06),rgba(255,255,255,.02));
+  padding:13px;margin:8px 0;
+  box-shadow:inset 0 0 0 1px rgba(227,192,92,.28),0 8px 20px rgba(0,0,0,.4);
+  clip-path:polygon(10px 0,calc(100% - 10px) 0,100% 10px,100% calc(100% - 10px),
+    calc(100% - 10px) 100%,10px 100%,0 calc(100% - 10px),0 10px)}
+.ligne{display:flex;justify-content:space-between;align-items:center;padding:8px 0;font-size:14.5px}
+.ligne+.ligne{border-top:1px solid rgba(227,192,92,.16)}
+.pts{font-family:"Cinzel",Georgia,serif;color:var(--or-clair);font-weight:700}
+.tag{display:inline-block;font-size:9.5px;font-weight:800;padding:3px 9px;letter-spacing:.1em;
+  background:rgba(255,255,255,.06);color:var(--or-clair);
+  box-shadow:inset 0 0 0 1px rgba(227,192,92,.35)}
+.tag.fui{color:#8df0c2;box-shadow:inset 0 0 0 1px rgba(49,185,138,.55)}
+.tag.pris{color:#ffada3;box-shadow:inset 0 0 0 1px rgba(212,58,44,.55)}
+input[type=text]{width:100%;padding:13px;border:none;font-size:16px;font-family:inherit;
+  background:rgba(255,255,255,.06);color:var(--papier);
+  box-shadow:inset 0 0 0 1px rgba(227,192,92,.32);
+  clip-path:polygon(8px 0,calc(100% - 8px) 0,100% 8px,100% calc(100% - 8px),
+    calc(100% - 8px) 100%,8px 100%,0 calc(100% - 8px),0 8px)}
+input[type=text]::placeholder{color:#5f6d87}
+.compteur{display:flex;align-items:center;gap:16px;justify-content:center}
+.compteur button{width:50px;height:50px;padding:0;font-size:24px}
+.compteur .n{font-family:"Cinzel",Georgia,serif;font-size:33px;font-weight:700;color:var(--or-clair);
+  min-width:46px;text-align:center}
+.cible{display:flex;flex-direction:column;gap:9px;width:100%;max-width:330px}
+.cible button{text-align:left;display:flex;justify-content:space-between;align-items:center;
+  text-transform:none;letter-spacing:.02em}
+.cible button.riche{flex-direction:column;align-items:stretch;gap:7px;padding:11px 12px}
+.cible .entete{display:flex;justify-content:space-between;align-items:center;width:100%}
+.apercu{display:flex;gap:3px;flex-wrap:wrap}
+.apercu .carte.perdue{filter:drop-shadow(0 0 6px var(--ambre))}
+.apercu .vide{font-size:11px;color:var(--brume);font-style:italic;padding:4px 0}
+.apercu .reste{font-size:11px;color:var(--brume);align-self:center;padding-left:3px}
+.marque{font-size:9.5px;font-weight:800;color:var(--ambre);letter-spacing:.1em;text-transform:uppercase}
+#son{position:absolute;top:calc(env(safe-area-inset-top) + 4px);right:8px;z-index:6;
+  background:none;box-shadow:none;padding:6px;opacity:.5;clip-path:none}
+#son svg{width:19px;height:19px;display:block}
+
+/* ============ ENTRER DANS LA BANQUE ============ */
+/* pendant la transition on coupe toutes les animations d'ambiance :
+   ce sont elles qui saccadaient (projecteurs, étoiles, vitrail) */
+#banque.fige .faisceau,#banque.fige .etoile,#banque.fige .vitrail{animation:none!important}
+#banque.fige{will-change:transform}
+.zoom-porte{
+  animation:zoomPorte 1.15s cubic-bezier(.45,.05,.7,.35) forwards;
+  transform-origin:50% 68%;
+  will-change:transform;backface-visibility:hidden}
+@keyframes zoomPorte{from{transform:translateZ(0) scale(1)}to{transform:translateZ(0) scale(3.4)}}
+.sortie-accueil{animation:sortieAccueil .4s ease-in forwards;will-change:transform,opacity}
+@keyframes sortieAccueil{to{opacity:0;transform:translate3d(0,22px,0)}}
+/* la lumière : un simple dégradé mis à l'échelle, sans ombre portée (l'ombre floue était le pire coupable) */
+.eclat{position:fixed;width:260px;height:260px;border-radius:50%;z-index:34;pointer-events:none;
+  margin-left:-130px;margin-top:-130px;
+  background:radial-gradient(circle,#fff9e2 0%,#fff3c4 26%,#e3c05c 52%,rgba(168,130,28,.85) 78%,rgba(168,130,28,0) 100%);
+  transform:translate3d(0,0,0) scale(.12);opacity:0;
+  will-change:transform,opacity;backface-visibility:hidden;
+  animation:eclat 1.05s cubic-bezier(.5,.03,.75,.4) .32s forwards}
+@keyframes eclat{0%{transform:translate3d(0,0,0) scale(.12);opacity:.7}
+  55%{opacity:1}
+  100%{transform:translate3d(0,0,0) scale(9);opacity:1}}
+.eclat.part{animation:eclatPart .55s ease-out forwards}
+@keyframes eclatPart{from{opacity:1}to{opacity:0}}
+.arrive{animation:arrive .45s ease-out}
+@keyframes arrive{from{opacity:0}to{opacity:1}}
+
+/* ============ MA ZONE (en bas, plus grande) ============ */
+#matable{position:relative;flex:1;min-height:0;margin:0 0 2px;padding-top:30px}
+.moi-panneau{position:relative;margin-top:4px;padding:9px 10px 10px;
+  background:linear-gradient(180deg,rgba(227,192,92,.10),rgba(255,255,255,.03));
+  box-shadow:inset 0 0 0 1px rgba(227,192,92,.45),0 -6px 22px rgba(0,0,0,.5);
+  clip-path:polygon(12px 0,calc(100% - 12px) 0,100% 12px,100% 100%,0 100%,0 12px)}
+.moi-entete{display:flex;justify-content:space-between;align-items:baseline;margin-bottom:6px}
+.moi-nom{font-family:"Cinzel",Georgia,serif;font-size:13px;letter-spacing:.14em;color:var(--or-clair)}
+.moi-sac{display:flex;align-items:center;gap:9px}
+.moi-sac .chiffre{font-size:34px;color:var(--or-clair);line-height:1}
+.moi-sac .lib{font-size:10px;color:var(--brume);letter-spacing:.12em;text-transform:uppercase}
+.moi-butin{display:flex;gap:3px;flex-wrap:wrap;min-height:24px;margin-bottom:7px}
+.moi-main{display:flex;gap:8px;justify-content:center;flex-wrap:wrap;min-height:8px}
+.moi-main .carte{cursor:pointer}
+.lg{width:88px;height:123px}
+.lg .nom-f{font-size:7.5px;padding:7px 0 1px}
+.lg .soleil{width:72px;height:72px}
+.lg .disque{width:52px;height:52px}
+.lg .num{font-size:27px}
+.lg .embleme{height:20px;margin-bottom:6px}
+.lg .coin{font-size:8.5px}
+.lg .coin.hg{left:4px;top:3px}.lg .coin.bd{right:4px;bottom:3px}
+.lg .cadre{inset:3px}
+.lg .mono{width:52px;height:52px;font-size:19px}
+.carte.jouable{filter:drop-shadow(0 0 8px rgba(227,192,92,.9))}
+.attente{opacity:.55}
+/* les autres joueurs, autour du haut du coffre */
+.dos-mini{width:13px;height:18px;border-radius:2px;flex:0 0 auto;
+  background:repeating-linear-gradient(45deg,#0a1120 0 3px,#16233a 3px 6px);
+  box-shadow:inset 0 0 0 1px rgba(227,192,92,.55)}
+.siege .mains{display:flex;gap:2px;justify-content:center;margin-top:3px;height:18px}
+.badge-tour{position:absolute;left:50%;transform:translateX(-50%);bottom:-7px;
+  font-size:8px;font-weight:800;letter-spacing:.1em;color:#241a00;background:var(--or);
+  padding:1px 7px;white-space:nowrap}
+
+
+/* ============ SÉLECTION DE CARTE (Espion) ============ */
+.choix{display:flex;gap:10px;justify-content:center;align-items:flex-end}
+.choix .case{display:flex;flex-direction:column;align-items:center;gap:7px;cursor:pointer}
+.choix .case .carte{transition:transform .22s cubic-bezier(.3,1.3,.5,1),filter .22s}
+/* la carte choisie se soulève et flotte */
+.choix .case.choisie .carte{
+  filter:drop-shadow(0 10px 16px rgba(0,0,0,.65)) drop-shadow(0 0 12px rgba(227,192,92,1));
+  animation:flotte 1s ease-in-out infinite alternate}
+@keyframes flotte{from{transform:translateY(-14px) rotate(-1.5deg)}
+  to{transform:translateY(-22px) rotate(1.5deg)}}
+/* les deux cartes qui viennent d'être échangées rebondissent en se posant */
+.choix .case.pose .carte{animation:pose .55s cubic-bezier(.26,1.6,.4,1)}
+@keyframes pose{0%{transform:translateY(-30px) scale(1.1)}
+  55%{transform:translateY(5px) scale(.96)}
+  78%{transform:translateY(-6px) scale(1.02)}
+  100%{transform:translateY(0) scale(1)}}
+.rang{font-family:"Cinzel",Georgia,serif;font-size:10px;letter-spacing:.12em;color:var(--brume);
+  padding:3px 10px;box-shadow:inset 0 0 0 1px rgba(227,192,92,.3);transition:all .2s}
+.choix .case:first-child .rang{color:var(--or-clair);box-shadow:inset 0 0 0 1px rgba(227,192,92,.75)}
+.choix .case.choisie .rang{color:#241a00;background:var(--or);box-shadow:none;font-weight:700}
+.consigne{font-size:13px;color:var(--papier);min-height:19px;margin:10px 0 16px;
+  transition:color .2s}
+.consigne.actif{color:var(--or-clair);font-weight:700}
+@media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
+
+</style>
+</head>
+<body>
+<div id="fond"></div>
+<div id="app"></div>
+<script>
+"use strict";
+var app=document.getElementById("app");
+function $(s){return document.querySelector(s);}
+function el(t,c,h){var e=document.createElement(t);if(c)e.className=c;if(h!==undefined)e.innerHTML=h;return e;}
+
+/* ================= SON ================= */
+var AC=null, sonOn=true;
+function ctx(){ if(!AC){ try{ AC=new (window.AudioContext||window.webkitAudioContext)(); }catch(e){} } return AC; }
+function bip(f,d,type,vol,vers){
+  if(!sonOn) return; var c=ctx(); if(!c) return;
+  var o=c.createOscillator(), g=c.createGain();
+  o.type=type||"sine"; o.frequency.setValueAtTime(f,c.currentTime);
+  if(vers) o.frequency.linearRampToValueAtTime(vers,c.currentTime+d);
+  g.gain.setValueAtTime(0,c.currentTime);
+  g.gain.linearRampToValueAtTime(vol||.14,c.currentTime+.012);
+  g.gain.exponentialRampToValueAtTime(.0001,c.currentTime+d);
+  o.connect(g);g.connect(c.destination);o.start();o.stop(c.currentTime+d+.02);
+}
+function sonPiece(){ bip(1180,.09,"triangle",.15); setTimeout(function(){bip(1720,.15,"triangle",.12);},65); }
+function sonLingot(){ [880,1170,1560,2090].forEach(function(f,i){setTimeout(function(){bip(f,.2,"triangle",.14);},i*70);}); }
+function sonSpeciale(){ bip(500,.1,"square",.09); setTimeout(function(){bip(760,.17,"square",.08);},80); }
+function sonAlarme(n){ for(var i=0;i<(n||2);i++)(function(k){setTimeout(function(){bip(900,.16,"square",.13,660);},k*230);})(i); }
+function sonSirene(){ if(!sonOn)return; for(var i=0;i<7;i++)(function(k){setTimeout(function(){bip(k%2?560:880,.33,"sawtooth",.1);},k*320);})(i); }
+function sonFuite(){ bip(780,.34,"sine",.13,240); }
+function sonVictoire(){ [523,659,784,1047,1319].forEach(function(f,i){setTimeout(function(){bip(f,.35,"triangle",.14);},i*130);}); }
+function sonPorte(){
+  if(!sonOn) return;
+  bip(120,.85,"sawtooth",.10,52);                                  // grondement des gonds
+  setTimeout(function(){ bip(420,.28,"square",.09,180); },520);     // pêne qui se retire
+  setTimeout(function(){ bip(70,.5,"sine",.12,40); },700);          // battant lourd
+  [880,1170,1560].forEach(function(f,i){
+    setTimeout(function(){ bip(f,.4,"triangle",.09); },980+i*110);  // éclat de lumière
+  });
+}
+function sonCoffre(){ bip(180,.22,"sawtooth",.1,90); }
+function vibre(p){ if(navigator.vibrate) try{navigator.vibrate(p);}catch(e){} }
+
+/* ================= EFFETS ================= */
+function flash(c){var d=el("div","flash "+c);document.body.appendChild(d);setTimeout(function(){d.remove();},560);}
+function secousse(){app.classList.add("secoue");setTimeout(function(){app.classList.remove("secoue");},520);}
+function gyrophares(){var d=el("div","gyro");document.body.appendChild(d);setTimeout(function(){d.remove();},3300);}
+function pluieDePieces(n){
+  for(var i=0;i<(n||18);i++)(function(k){setTimeout(function(){
+    var p=el("div","piece");
+    p.style.left=(Math.random()*94+2)+"vw";
+    p.style.animationDuration=(1.5+Math.random()*1.4)+"s";
+    document.body.appendChild(p);
+    setTimeout(function(){p.remove();},3300);
+  },k*85);})(i);
+}
+function etincelles(x,y,n,coul){
+  for(var i=0;i<(n||12);i++){
+    var e=el("div","etincelle"), a=Math.random()*Math.PI*2, d=45+Math.random()*85;
+    e.style.left=x+"px"; e.style.top=y+"px";
+    e.style.setProperty("--dx",Math.cos(a)*d+"px");
+    e.style.setProperty("--dy",Math.sin(a)*d+"px");
+    if(coul) e.style.background=coul;
+    document.body.appendChild(e);
+    (function(z){setTimeout(function(){z.remove();},850);})(e);
+  }
+}
+
+/* ================= PAQUET ================= */
+var QTES={1:8,2:8,3:8,4:7,5:7,6:6,7:5,8:4,9:3,10:4};
+var SPECIALES={
+  balance:{nom:"BALANCE",coul:"var(--amethyste)",ico:"\u2757",
+    eff:"Ta cible est obligée de piocher à son prochain tour. Interdit de fuir !"},
+  complice:{nom:"COMPLICE",coul:"var(--nuitbleu)",ico:"\uD83E\uDD1D",
+    eff:"Quand la police débarque, ton sac est sauvé et sécurisé malgré tout."},
+  sacperce:{nom:"SAC PERCÉ",coul:"var(--ambre)",ico:"\uD83D\uDCB0",
+    eff:"Ta cible défausse la plus grosse carte de son sac."},
+  espion:{nom:"L'ESPION",coul:"var(--jade)",ico:"\uD83D\uDD75",
+    eff:"Regarde les 3 prochaines cartes de la pioche et remets-les dans l'ordre de ton choix."},
+  vol:{nom:"LE VOL",coul:"var(--fuchsia)",ico:"\uD83E\uDDE4",
+    eff:"Effet immédiat : vole une carte dans le sac d'un adversaire encore en jeu."}
+};
+/* --- rendu des cartes : voir plus bas --- */
+function melange(a){for(var i=a.length-1;i>0;i--){var j=Math.floor(Math.random()*(i+1));var t=a[i];a[i]=a[j];a[j]=t;}return a;}
+function neufPaquet(){
+  var d=[],v,i,k;
+  for(v in QTES) for(i=0;i<QTES[v];i++) d.push({t:"butin",v:parseInt(v,10)});
+  for(i=0;i<9;i++) d.push({t:"alarme"});
+  for(k in SPECIALES) for(i=0;i<3;i++) d.push({t:"sp",k:k});
+  return melange(d);
+}
+/* ================= EMBLÈMES (dessinés, pas d'émojis) ================= */
+function svg(inner,vb){
+  return '<svg viewBox="'+(vb||"0 0 100 100")+'" width="100%" height="100%" '+
+    'preserveAspectRatio="xMidYMid meet" fill="none" stroke="currentColor" stroke-width="5" '+
+    'stroke-linecap="round" stroke-linejoin="round">'+inner+'</svg>';
+}
+var EMBLEMES={
+  billets:svg('<rect x="14" y="34" width="72" height="36" rx="3" fill="currentColor" opacity=".18"/>'+
+    '<rect x="20" y="28" width="72" height="36" rx="3" stroke-width="5"/>'+
+    '<circle cx="56" cy="46" r="9"/><path d="M56 39v14"/>'),
+  bijoux:svg('<circle cx="50" cy="60" r="24" stroke-width="6"/>'+
+    '<path d="M38 30h24l-6 12H44z" fill="currentColor" opacity=".25"/>'+
+    '<path d="M38 30h24l-6 12H44z"/><path d="M44 42l6-12 6 12"/>'),
+  diamants:svg('<path d="M26 40h48L50 82z" fill="currentColor" opacity=".2"/>'+
+    '<path d="M26 40h48L50 82z"/><path d="M34 24h32l8 16H26z"/>'+
+    '<path d="M34 24l-8 16M66 24l8 16M42 40L50 82M58 40L50 82M42 40l8-16 8 16"/>'),
+  lingot:svg('<path d="M22 62h56l-8 16H30z" fill="currentColor" opacity=".22"/>'+
+    '<path d="M22 62h56l-8 16H30z"/><path d="M30 42h40l-6 14H36z"/>'+
+    '<path d="M40 24h20l-4 12H44z"/>'),
+  alarme:svg('<path d="M28 62c0-16 4-30 22-30s22 14 22 30" fill="currentColor" opacity=".22"/>'+
+    '<path d="M28 62c0-16 4-30 22-30s22 14 22 30"/><path d="M20 62h60"/>'+
+    '<path d="M44 72a6 6 0 0012 0"/><path d="M50 32v-8"/>'+
+    '<path d="M14 40C10 46 10 54 14 60M86 40c4 6 4 14 0 20"/>'),
+  balance:svg('<path d="M50 16l30 12v22c0 18-13 28-30 34-17-6-30-16-30-34V28z" fill="currentColor" opacity=".18"/>'+
+    '<path d="M50 16l30 12v22c0 18-13 28-30 34-17-6-30-16-30-34V28z"/>'+
+    '<path d="M50 34v22" stroke-width="7"/><circle cx="50" cy="68" r="3.5" fill="currentColor" stroke="none"/>'),
+  complice:svg('<circle cx="34" cy="34" r="12"/><circle cx="66" cy="34" r="12"/>'+
+    '<path d="M14 78c0-13 9-22 20-22s20 9 20 22" opacity=".9"/>'+
+    '<path d="M46 78c0-13 9-22 20-22s20 9 20 22"/>'),
+  sacperce:svg('<path d="M32 40h36c8 10 12 22 12 30 0 10-13 16-30 16S20 80 20 70c0-8 4-20 12-30z" fill="currentColor" opacity=".2"/>'+
+    '<path d="M32 40h36c8 10 12 22 12 30 0 10-13 16-30 16S20 80 20 70c0-8 4-20 12-30z"/>'+
+    '<path d="M40 40l4-14h12l4 14"/><circle cx="64" cy="74" r="6" fill="#050810" stroke="currentColor"/>'+
+    '<circle cx="74" cy="90" r="4"/>'),
+  espion:svg('<path d="M22 44c6-16 14-24 28-24s22 8 28 24z" fill="currentColor" opacity=".22"/>'+
+    '<path d="M22 44c6-16 14-24 28-24s22 8 28 24z"/><path d="M12 46h76"/>'+
+    '<circle cx="36" cy="66" r="11"/><circle cx="64" cy="66" r="11"/><path d="M47 66h6"/>'),
+  fuite:svg('<circle cx="58" cy="20" r="9"/><path d="M52 34l-14 12 10 14-6 20"/>'+
+    '<path d="M38 46l-16 4M48 60l18 6 6 16"/><path d="M52 34l14 8 10-6"/>'),
+  police:svg('<rect x="14" y="46" width="72" height="26" rx="5" fill="currentColor" opacity=".2"/>'+
+    '<rect x="14" y="46" width="72" height="26" rx="5"/>'+
+    '<path d="M24 46l10-16h32l10 16"/><rect x="30" y="24" width="16" height="10" rx="3"/>'+
+    '<rect x="54" y="24" width="16" height="10" rx="3"/>'+
+    '<circle cx="32" cy="76" r="8"/><circle cx="68" cy="76" r="8"/>'),
+  trophee:svg('<path d="M32 18h36v22c0 12-8 20-18 20s-18-8-18-20z" fill="currentColor" opacity=".22"/>'+
+    '<path d="M32 18h36v22c0 12-8 20-18 20s-18-8-18-20z"/>'+
+    '<path d="M32 24H20c0 12 6 18 12 18M68 24h12c0 12-6 18-12 18"/>'+
+    '<path d="M50 60v14M36 84h28l-4-10H40z"/>'),
+  vol:svg('<circle cx="70" cy="30" r="12"/><path d="M70 24v12"/>'+
+    '<path d="M20 56h26v14H20z" fill="currentColor" opacity=".22"/>'+
+    '<path d="M24 50c0-4 3-7 7-7h14v10H31c-4 0-7-3-7-3z"/>'+
+    '<path d="M45 46h18M45 55h20M45 64h16"/><path d="M20 44v26"/>')
+};
+function familleDe(v){
+  if(v<=3) return {n:"BILLETS",c:"var(--jade)",e:"billets"};
+  if(v<=6) return {n:"BIJOUX",c:"var(--lagon)",e:"bijoux"};
+  if(v<=9) return {n:"DIAMANTS",c:"var(--amethyste)",e:"diamants"};
+  return {n:"LINGOT",c:"var(--or)",e:"lingot"};
+}
+
+/* ================= CARTES ================= */
+function corps(taille,coul,nomFamille,centre,embleme,coin,txt,bas){
+  return '<div class="carte '+taille+'" style="color:'+coul+'">'+
+    '<div class="dedans" style="color:'+coul+'">'+
+      '<div class="cadre"></div>'+
+      (coin?'<span class="coin hg" style="color:'+coul+'">'+coin+'</span>'+
+            '<span class="coin bd" style="color:'+coul+'">'+coin+'</span>':'')+
+      '<div class="nom-f" style="color:'+coul+'">'+nomFamille+'</div>'+
+      '<div class="medaille">'+
+        '<div class="soleil" style="color:'+coul+'"></div>'+
+        '<div class="disque" style="color:'+coul+'">'+centre+'</div>'+
+      '</div>'+
+      (embleme?'<div class="embleme" style="color:'+coul+'">'+embleme+'</div>':'')+
+      (txt?'<div class="txt">'+txt+'</div>':'')+
+      (bas?'<div class="bas">'+bas+'</div>':'')+
+    '</div></div>';
+}
+function htmlCarte(c,taille){
+  var g=(taille==="xl");
+  if(c.t==="butin"){
+    var f=familleDe(c.v);
+    return corps(taille,f.c,f.n,'<span class="num">'+c.v+'</span>',
+      EMBLEMES[f.e],c.v,
+      g?(c.v===10?"Le lingot — la pièce maîtresse du coffre.":"Butin : "+c.v+" point"+(c.v>1?"s":"")+" pour ton sac.") : "",
+      g?(c.v+" POINT"+(c.v>1?"S":"")) : "");
+  }
+  if(c.t==="alarme"){
+    return corps(taille,"var(--sang)","ALARME",EMBLEMES.alarme,"","!",
+      g?"À la 3ᵉ alarme, la police débarque et rafle tous ceux qui sont encore dans le coffre.":"",
+      g?"DANGER":"");
+  }
+  var s=SPECIALES[c.k];
+  return corps(taille,s.coul,s.nom,EMBLEMES[c.k],"","",
+    g?s.eff:"", g?"CARTE SPÉCIALE":"");
+}
+function htmlDos(taille){
+  return '<div class="carte dos '+taille+'"><div class="dedans">'+
+    '<div class="cadre"></div><div class="mono">LB</div></div></div>';
+}
+
+/* ================= ACCUEIL : LA BANQUE, DE NUIT ================= */
+function facadeBanque(){
+  var etoiles="",i,x,y;
+  for(i=0;i<14;i++){
+    x=Math.round(Math.random()*400); y=Math.round(Math.random()*90);
+    etoiles+='<circle class="etoile" cx="'+x+'" cy="'+y+'" r="'+(Math.random()*.9+.5).toFixed(1)+
+      '" fill="#fff" style="animation-delay:'+(Math.random()*3).toFixed(1)+'s"/>';
+  }
+  var colonnes="";
+  for(i=0;i<6;i++){
+    x=88+i*45;
+    colonnes+='<g>'+
+      '<rect x="'+(x-3)+'" y="150" width="30" height="8" fill="#26334d"/>'+
+      '<rect x="'+x+'" y="158" width="24" height="76" fill="url(#col)"/>'+
+      '<rect x="'+(x+4)+'" y="158" width="3" height="76" fill="#0e1626" opacity=".5"/>'+
+      '<rect x="'+(x+13)+'" y="158" width="3" height="76" fill="#0e1626" opacity=".5"/>'+
+      '<rect x="'+(x-3)+'" y="234" width="30" height="8" fill="#26334d"/>'+
+    '</g>';
+  }
+  return '<svg viewBox="0 0 400 300" preserveAspectRatio="xMidYMax slice">'+
+    '<defs>'+
+      '<linearGradient id="ciel" x1="0" y1="0" x2="0" y2="1">'+
+        '<stop offset="0%" stop-color="#050914"/><stop offset="55%" stop-color="#0d1830"/>'+
+        '<stop offset="100%" stop-color="#16243f"/></linearGradient>'+
+      '<linearGradient id="col" x1="0" y1="0" x2="1" y2="0">'+
+        '<stop offset="0%" stop-color="#1b2740"/><stop offset="45%" stop-color="#3a4a6b"/>'+
+        '<stop offset="100%" stop-color="#161f36"/></linearGradient>'+
+      '<linearGradient id="fro" x1="0" y1="0" x2="0" y2="1">'+
+        '<stop offset="0%" stop-color="#2c3b58"/><stop offset="100%" stop-color="#16203a"/></linearGradient>'+
+      '<radialGradient id="halo"><stop offset="0%" stop-color="#e3c05c" stop-opacity=".55"/>'+
+        '<stop offset="100%" stop-color="#e3c05c" stop-opacity="0"/></radialGradient>'+
+      '<linearGradient id="ray" x1="0" y1="1" x2="0" y2="0">'+
+        '<stop offset="0%" stop-color="#cfe4ff" stop-opacity=".30"/>'+
+        '<stop offset="100%" stop-color="#cfe4ff" stop-opacity="0"/></linearGradient>'+
+    '</defs>'+
+    '<rect width="400" height="300" fill="url(#ciel)"/>'+
+    etoiles+
+    '<circle cx="330" cy="46" r="19" fill="#f2ecd6" opacity=".85"/>'+
+    '<circle cx="322" cy="41" r="19" fill="#0d1830" opacity=".95"/>'+
+    /* projecteurs */
+    '<g class="faisceau" style="transform-origin:120px 300px">'+
+      '<polygon points="120,300 78,54 150,54" fill="url(#ray)"/></g>'+
+    '<g class="faisceau b2" style="transform-origin:290px 300px">'+
+      '<polygon points="290,300 250,68 322,68" fill="url(#ray)"/></g>'+
+    /* ville au loin */
+    '<g fill="#0a1224" opacity=".9">'+
+      '<rect x="0" y="120" width="34" height="180" fill="#0a1224"/>'+
+      '<rect x="36" y="146" width="26" height="154" fill="#0c1526"/>'+
+      '<rect x="340" y="132" width="30" height="168" fill="#0a1224"/>'+
+      '<rect x="372" y="158" width="28" height="142" fill="#0c1526"/>'+
+    '</g>'+
+    /* halo derrière la banque */
+    '<ellipse cx="200" cy="210" rx="150" ry="80" fill="url(#halo)"/>'+
+    /* corps de la banque */
+    '<rect x="70" y="140" width="260" height="12" fill="#2c3b58"/>'+
+    '<polygon points="200,96 336,142 64,142" fill="url(#fro)"/>'+
+    '<polygon points="200,104 322,142 78,142" fill="#0e1830" opacity=".55"/>'+
+    '<circle cx="200" cy="128" r="11" fill="none" stroke="#e3c05c" stroke-width="2"/>'+
+    '<circle cx="200" cy="128" r="4" fill="#e3c05c"/>'+
+    '<path d="M200 121v7l5 3" stroke="#0d1830" stroke-width="1.6" fill="none"/>'+
+    colonnes+
+    '<rect x="64" y="234" width="272" height="12" fill="#2c3b58"/>'+
+    /* porte et lumière */
+    '<rect x="176" y="176" width="48" height="58" rx="24" fill="#e3c05c" class="vitrail" opacity=".9"/>'+
+    '<rect x="184" y="188" width="32" height="46" rx="16" fill="#fff3c4" class="vitrail" opacity=".75"/>'+
+    '<rect x="199" y="188" width="2" height="46" fill="#8a6d18" opacity=".7"/>'+
+    /* marches */
+    '<rect x="56" y="246" width="288" height="9" fill="#243350"/>'+
+    '<rect x="46" y="255" width="308" height="9" fill="#1d2a44"/>'+
+    '<rect x="36" y="264" width="328" height="10" fill="#172238"/>'+
+    '<rect x="26" y="274" width="348" height="26" fill="#111a2c"/>'+
+    /* enseigne gravée */
+    '<text x="200" y="170" text-anchor="middle" font-family="Cinzel,Georgia,serif" '+
+      'font-size="13" letter-spacing="4.5" fill="#e3c05c" opacity=".95">BANQUE</text>'+
+    '<text x="200" y="170" text-anchor="middle" font-family="Cinzel,Georgia,serif" '+
+      'font-size="13" letter-spacing="4.5" fill="#000" opacity=".35" transform="translate(0,-1)">BANQUE</text>'+
+  '</svg>';
+}
+function iconeSon(){
+  var base='<path d="M12 22h10l14-12v40L22 38H12z" fill="currentColor" stroke="none"/>';
+  var ondes=sonOn?'<path d="M44 24c5 6 5 16 0 22M53 17c9 10 9 26 0 36" stroke="currentColor" stroke-width="5" fill="none" stroke-linecap="round"/>'
+                 :'<path d="M46 24l18 18M64 24L46 42" stroke="currentColor" stroke-width="5" stroke-linecap="round"/>';
+  return '<svg viewBox="0 0 70 70" style="color:var(--or)">'+base+ondes+'</svg>';
+}
+
+
+/* ================= LIAISON AVEC LE SERVEUR ================= */
+var SOCK=null, MOI=null, CODE=null, E=null, DERNIER=null, monNom="";
+var NOMS_BOTS=["Vito","Nina","Marlo","Suzie","Franck","Lola","Karim"];
+var reconnexion=null;
+
+function connecter(surOuverture){
+  var url=(location.protocol==="https:"?"wss://":"ws://")+location.host;
+  try{ SOCK=new WebSocket(url); }
+  catch(e){ ecranPanne("Impossible de joindre le serveur."); return; }
+  SOCK.onopen=function(){ if(surOuverture) surOuverture(); };
+  SOCK.onmessage=function(ev){
+    var m; try{ m=JSON.parse(ev.data); }catch(e){ return; }
+    if(m.t==="moi"){ MOI=m.id; CODE=m.code; return; }
+    if(m.t==="erreur"){ toast(m.msg,"var(--sang)"); ecranAccueil(); return; }
+    if(m.t==="etat"){ recevoirEtat(m.etat); }
+  };
+  SOCK.onclose=function(){
+    if(E && E.phase!=="salon"){ ecranPanne("Connexion perdue."); }
+  };
+  SOCK.onerror=function(){};
+}
+function envoyer(o){
+  if(SOCK && SOCK.readyState===1) SOCK.send(JSON.stringify(o));
+}
+function ecranPanne(msg){
+  app.innerHTML=
+    '<div class="spacer"></div>'+
+    '<h1 class="titre" style="font-size:22px">'+msg+'</h1>'+
+    '<div class="hint" style="margin-top:10px">Vérifie que le serveur tourne toujours et que ton téléphone est sur le même réseau.</div>'+
+    '<div class="spacer"></div>'+
+    '<button class="b-or" id="retour">Revenir au menu</button>';
+  $("#retour").onclick=function(){ E=null; ecranAccueil(); };
+}
+
+/* on ne redessine que si quelque chose a changé */
+function recevoirEtat(etat){
+  var avant=E;
+  E=etat;
+  var signature=JSON.stringify([etat.phase,etat.tour,etat.manche,etat.alarmes,
+    etat.restantes,etat.joueurs.map(function(j){return [j.nom,j.total,j.sac.length,j.cartesEnMain,j.fui,j.pris,j.connecte];}),
+    etat.evenement]);
+  if(signature===DERNIER) return;
+  DERNIER=signature;
+  effetsDeLEvenement(avant,etat);
+  dessiner();
+}
+function moiJoueur(){
+  if(!E) return null;
+  for(var i=0;i<E.joueurs.length;i++) if(E.joueurs[i].id===MOI) return E.joueurs[i];
+  return null;
+}
+function cEstMonTour(){ return E && E.joueurs[E.tour] && E.joueurs[E.tour].id===MOI; }
+function valSac(j){ return j.sac.reduce(function(s,c){return s+c.v;},0); }
+
+/* ================= EFFETS DÉCLENCHÉS PAR LE SERVEUR ================= */
+function effetsDeLEvenement(avant,etat){
+  var ev=etat.evenement;
+  if(!ev) return;
+  var memeQuAvant = avant && avant.evenement &&
+    JSON.stringify(avant.evenement)===JSON.stringify(ev);
+  if(memeQuAvant) return;
+  if(ev.type==="butin"){
+    if(ev.carte.v===10){ sonLingot(); flash("or"); vibre([15,50,15]); }
+    else { sonPiece(); vibre(16); }
+  }else if(ev.type==="alarme"){
+    flash("rouge"); secousse();
+    if(ev.rang>=3){ sonSirene(); vibre([80,60,80,60,240]); }
+    else { sonAlarme(2); vibre([40,60,40]); }
+  }else if(ev.type==="police"){
+    gyrophares(); sonSirene(); vibre([100,80,100,80,300]);
+  }else if(ev.type==="fuite"){
+    sonFuite(); flash("vert"); vibre([20,40,20]);
+  }else if(ev.type==="vole"){
+    sonPiece(); flash("or"); vibre([20,40,20]);
+  }else if(ev.type==="sacperce"){
+    flash("rouge"); sonSpeciale(); vibre(25);
+  }else{
+    sonSpeciale(); vibre(18);
+  }
+  if(etat.phase==="victoire"){ sonVictoire(); pluieDePieces(24); }
+}
+
+/* ================= AIGUILLAGE DES ÉCRANS ================= */
+function dessiner(){
+  if(!E) return ecranAccueil();
+  switch(E.phase){
+    case "salon":     return ecranSalon();
+    case "tour":      return ecranTable(true);
+    case "revele":    return ecranRevelation();
+    case "vol":       return ecranVol();
+    case "espion":    return ecranEspion();
+    case "police":    return ecranPolice();
+    case "finManche": return ecranFinManche();
+    case "victoire":  return ecranVictoire();
+  }
+}
+
+/* ================= ACCUEIL ================= */
+function ecranAccueil(){
+  app.innerHTML=
+    '<div id="banque">'+facadeBanque()+'</div>'+
+    '<div id="accueil-texte" style="position:relative;margin-top:-14px">'+
+      '<h1 class="titre">LE BRAQUAGE</h1>'+
+      '<div class="filet"><i></i></div>'+
+      '<div class="sous">chacun son téléphone, un seul coffre</div>'+
+      '<div style="margin-top:16px">'+
+        '<button class="b-or" id="creer" style="width:100%">Monter un casse</button>'+
+        '<button class="b-sombre" id="rejoindre" style="width:100%;margin-top:9px">Rejoindre la bande</button>'+
+        '<button class="b-sombre" id="solo" style="width:100%;margin-top:9px">Casse en solitaire</button>'+
+        '<button class="b-sombre" id="regles" style="width:100%;margin-top:9px">Le plan du casse</button>'+
+      '</div>'+
+    '</div>';
+  $("#creer").onclick=function(){ ctx(); ecranNom("creer"); };
+  $("#rejoindre").onclick=function(){ ctx(); ecranNom("rejoindre"); };
+  $("#solo").onclick=function(){ ctx(); ecranSolo(); };
+  $("#regles").onclick=ecranRegles;
+}
+
+function ecranNom(mode){
+  app.innerHTML=
+    '<h1 class="titre" style="font-size:23px">'+(mode==="creer"?"MONTER UN CASSE":"REJOINDRE LA BANDE")+'</h1>'+
+    '<div class="filet"><i></i></div>'+
+    '<div class="panneau"><div class="etiq">Ton nom de braqueur</div>'+
+      '<input type="text" id="nom" maxlength="10" placeholder="Prénom" value="'+(monNom||"")+'" style="margin-top:7px"></div>'+
+    (mode==="rejoindre"?
+      '<div class="panneau"><div class="etiq">Code de la partie</div>'+
+      '<input type="text" id="code" maxlength="4" placeholder="4 lettres" '+
+      'style="margin-top:7px;text-transform:uppercase;letter-spacing:.4em;text-align:center;'+
+      'font-family:Cinzel,Georgia,serif;font-size:24px"></div>':"")+
+    '<div class="spacer"></div>'+
+    '<button class="b-or" id="go">'+(mode==="creer"?"Ouvrir la table":"Entrer")+'</button>'+
+    '<button class="b-sombre" id="back" style="margin-top:10px">Retour</button>';
+  $("#back").onclick=ecranAccueil;
+  $("#go").onclick=function(){
+    monNom=($("#nom").value||"").trim()||"Braqueur";
+    var envoi=function(){
+      if(mode==="creer") envoyer({t:"creer", nom:monNom});
+      else{
+        var c=($("#code").value||"").trim().toUpperCase();
+        if(c.length!==4){ toast("Le code fait 4 lettres.","var(--sang)"); return; }
+        envoyer({t:"rejoindre", code:c, nom:monNom});
+      }
+    };
+    if(SOCK && SOCK.readyState===1) envoi(); else connecter(envoi);
+  };
+}
+
+/* ================= PARTIE SOLO ================= */
+var soloCfg={bots:2, cible:50};
+function ecranSolo(){
+  app.innerHTML=
+    '<h1 class="titre" style="font-size:23px">CASSE EN SOLITAIRE</h1>'+
+    '<div class="filet"><i></i></div>'+
+    '<div class="panneau"><div class="etiq">Ton nom de braqueur</div>'+
+      '<input type="text" id="nom" maxlength="10" placeholder="Prénom" value="'+(monNom||"")+'" style="margin-top:7px"></div>'+
+    '<div class="panneau"><div class="centre etiq">Complices du téléphone</div>'+
+      '<div class="compteur" style="margin-top:11px"><button class="b-sombre" id="m">−</button>'+
+      '<div class="n" id="n">'+soloCfg.bots+'</div><button class="b-sombre" id="p">+</button></div>'+
+      '<div class="hint" style="margin-top:8px" id="noms">'+NOMS_BOTS.slice(0,soloCfg.bots).join(" · ")+'</div></div>'+
+    '<div class="panneau"><div class="centre etiq">Objectif</div>'+
+      '<div class="rangee" style="margin-top:10px">'+
+      '<button class="'+(soloCfg.cible===50?"b-or":"b-sombre")+'" data-c="50">50 points</button>'+
+      '<button class="'+(soloCfg.cible===100?"b-or":"b-sombre")+'" data-c="100">100 points</button></div></div>'+
+    '<div class="spacer"></div>'+
+    '<button class="b-or" id="go">Ouvrir le coffre</button>'+
+    '<button class="b-sombre" id="back" style="margin-top:10px">Retour</button>';
+  function maj(){
+    $("#n").textContent=soloCfg.bots;
+    $("#noms").textContent=NOMS_BOTS.slice(0,soloCfg.bots).join(" · ");
+  }
+  $("#p").onclick=function(){ if(soloCfg.bots<7){ soloCfg.bots++; maj(); } };
+  $("#m").onclick=function(){ if(soloCfg.bots>1){ soloCfg.bots--; maj(); } };
+  Array.prototype.forEach.call(app.querySelectorAll("[data-c]"),function(b){
+    b.onclick=function(){ soloCfg.cible=parseInt(b.dataset.c,10); ecranSolo(); };
+  });
+  $("#back").onclick=ecranAccueil;
+  $("#go").onclick=function(){
+    monNom=($("#nom").value||"").trim()||"Toi";
+    var envoi=function(){ sonPorte(); envoyer({t:"solo", nom:monNom, bots:soloCfg.bots, cible:soloCfg.cible}); };
+    if(SOCK && SOCK.readyState===1) envoi(); else connecter(envoi);
+  };
+}
+
+/* ================= SALON ================= */
+function ecranSalon(){
+  var suisHote=(E.hote===MOI);
+  app.innerHTML=
+    '<h1 class="titre" style="font-size:21px">LA BANDE SE RÉUNIT</h1>'+
+    '<div class="filet"><i></i></div>'+
+    '<div class="panneau centre"><div class="etiq">Code de la partie</div>'+
+      '<div class="chiffre" style="font-size:52px;letter-spacing:.24em;color:var(--or-clair);'+
+      'margin:6px 0 2px">'+E.code+'</div>'+
+      '<div class="hint">Les autres tapent ce code sur leur téléphone</div></div>'+
+    '<div class="panneau scroll" style="flex:1">'+
+      '<div class="etiq" style="margin-bottom:6px">'+E.joueurs.length+' braqueur'+(E.joueurs.length>1?"s":"")+' à la table</div>'+
+      E.joueurs.map(function(j){
+        return '<div class="ligne"><span>'+(j.id===E.hote?'<span style="color:var(--or)">◆ </span>':'')+j.nom+
+          (j.id===MOI?' <span class="tag">toi</span>':'')+'</span>'+
+          '<span class="etiq">'+(j.connecte?"en place":"déconnecté")+'</span></div>';
+      }).join("")+
+    '</div>'+
+    (suisHote?
+      '<div class="panneau"><div class="centre etiq">Objectif</div>'+
+        '<div class="rangee" style="margin-top:9px">'+
+        '<button class="'+(E.cible===50?"b-or":"b-sombre")+'" data-c="50">50 points</button>'+
+        '<button class="'+(E.cible===100?"b-or":"b-sombre")+'" data-c="100">100 points</button></div></div>'+
+      '<button class="b-or" id="lancer"'+(E.joueurs.length<2?" disabled":"")+'>Lancer le casse</button>'
+      :'<div class="hint" style="margin:10px 0">En attente du chef de bande…</div>')+
+    '<button class="b-sombre" id="quitter" style="margin-top:9px">Quitter</button>';
+  if(suisHote){
+    Array.prototype.forEach.call(app.querySelectorAll("[data-c]"),function(b){
+      b.onclick=function(){ E.cible=parseInt(b.dataset.c,10); ecranSalon(); };
+    });
+    $("#lancer").onclick=function(){ sonPorte(); envoyer({t:"demarrer", cible:E.cible}); };
+  }
+  $("#quitter").onclick=function(){ if(SOCK) SOCK.close(); E=null; DERNIER=null; ecranAccueil(); };
+}
+
+/* ================= LA TABLE ================= */
+function ecranTable(){
+  var j=E.joueurs[E.tour], moi=moiJoueur(), aMoi=cEstMonTour();
+  var lampes="";
+  for(var i=0;i<3;i++) lampes+='<div class="lampe '+(i<E.alarmes?"on":"")+
+    (i===2&&E.alarmes===2?" critique":"")+'"><i></i></div>';
+
+  app.innerHTML=
+    '<button id="son">'+iconeSon()+'</button>'+
+    '<div class="ligne" style="padding:0 0 2px;gap:8px">'+
+      '<span class="etiq" style="letter-spacing:.08em;white-space:nowrap">M'+E.manche+(E.solo?"":" · "+E.code)+'</span>'+
+      '<span class="etiq" style="letter-spacing:.08em;white-space:nowrap">'+E.restantes+' cartes · '+E.cible+' pts</span></div>'+
+    '<div id="matable">'+
+      '<div class="lampes">'+lampes+'</div>'+
+      '<div class="porte" id="porte"></div>'+
+      '<div class="creux" id="coffre">'+
+        '<div class="pile-deck">'+
+          (E.restantes>2?'<div class="ombre-pile">'+htmlDos("deck")+'</div>':'')+
+          (E.restantes>1?'<div class="ombre-pile">'+htmlDos("deck")+'</div>':'')+
+          '<div class="'+(aMoi?"pulse":"")+'">'+htmlDos("deck")+'</div></div>'+
+      '</div>'+
+      '<div id="sieges"></div>'+
+    '</div>'+
+    '<div class="centre" style="margin:2px 0 0">'+
+      (aMoi?'<div class="titre" style="font-size:19px;letter-spacing:.14em">À TOI DE JOUER</div>'
+           :'<div class="etiq">au tour de <b style="color:var(--or-clair);font-size:13px">'+j.nom+'</b></div>')+
+    '</div>'+
+    zoneMoi(moi,aMoi);
+
+  habillerPorte();
+  placerSieges();
+  $("#son").onclick=function(){ sonOn=!sonOn; $("#son").innerHTML=iconeSon(); };
+  if(aMoi){
+    $("#piocher").onclick=function(){ envoyer({t:"piocher"}); };
+    $("#coffre").onclick=function(){ envoyer({t:"piocher"}); };
+    $("#fuir").onclick=function(){ envoyer({t:"fuir"}); };
+    brancherMain(moi);
+  }
+}
+
+/* ---------- ma zone : mon butin, ma main, mes boutons ---------- */
+function zoneMoi(moi,aMoi){
+  if(!moi) return "";
+  var butin=moi.sac.slice().sort(function(a,b){return b.v-a.v;})
+    .slice(0,10).map(function(c){return htmlCarte(c,"sm");}).join("");
+  var reste=moi.sac.length>10?'<span class="reste">+'+(moi.sac.length-10)+'</span>':'';
+  var main=moi.main&&moi.main.length
+    ? moi.main.map(function(c,i){
+        return htmlCarte(c,"lg").replace('class="carte lg"',
+          'class="carte lg '+(aMoi&&c.k!=="complice"?"jouable":"attente")+'" data-main="'+i+'"');
+      }).join("")
+    : '<div class="hint" style="margin:6px 0">aucune carte spéciale en main</div>';
+
+  return '<div class="moi-panneau">'+
+    '<div class="moi-entete">'+
+      '<span class="moi-nom">'+(moi.fui?"TU ES À L\'ABRI":moi.pris?"TU AS ÉTÉ PRIS":"TON SAC")+'</span>'+
+      '<span class="moi-sac"><span class="lib">butin</span>'+
+        '<span class="chiffre">'+(moi.pris?"—":valSac(moi))+'</span>'+
+        '<span class="lib">· total '+moi.total+'</span></span>'+
+    '</div>'+
+    '<div class="moi-butin">'+(butin||'<span class="vide" style="font-size:11px;color:var(--brume);font-style:italic">sac vide</span>')+reste+'</div>'+
+    '<div class="moi-main">'+main+'</div>'+
+    (aMoi?
+      '<div class="rangee" style="margin-top:9px">'+
+        '<button class="b-or" id="piocher">Piocher</button>'+
+        '<button class="b-vert" id="fuir"'+(moi.force?" disabled":"")+'>Fuir</button></div>'+
+      (moi.force?'<div class="hint" style="color:var(--amethyste);margin-top:5px">Une Balance t\'oblige à piocher.</div>':'')
+      :'')+
+  '</div>';
+}
+function brancherMain(moi){
+  Array.prototype.forEach.call(app.querySelectorAll("[data-main]"),function(e){
+    var i=parseInt(e.dataset.main,10), c=moi.main[i];
+    if(!c) return;
+    if(c.k==="complice"){
+      e.onclick=function(){ toast("Le Complice se déclenche tout seul face à la police.","var(--nuitbleu)"); };
+    }else{
+      e.onclick=function(){ choisirCible(moi,c,i); };
+    }
+  });
+}
+
+function habillerPorte(){
+  var p=$("#porte"); if(!p) return;
+  var d=p.clientWidth, r=d/2, i, a;
+  for(i=0;i<10;i++){
+    a=(i/10)*Math.PI*2-Math.PI/2;
+    var b=el("div","boulon");
+    b.style.left=(r+Math.cos(a)*r*0.885)+"px";
+    b.style.top=(r+Math.sin(a)*r*0.885)+"px";
+    p.appendChild(b);
+  }
+  for(i=0;i<3;i++){
+    var ray=el("div","rayon");
+    ray.style.transform="translate(-50%,0) rotate("+(i*120+30)+"deg)";
+    ray.style.height=(r*0.66)+"px";
+    p.appendChild(ray);
+  }
+  [0.30,0.70].forEach(function(f){
+    var c=el("div","charniere");
+    c.style.left="-9px"; c.style.top=(d*f-18)+"px";
+    p.appendChild(c);
+  });
+}
+
+/* ---------- les autres joueurs : autour du haut du coffre ---------- */
+function placerSieges(){
+  var z=$("#sieges"), t=$("#matable");
+  if(!z||!t) return;
+  var autres=E.joueurs.filter(function(x){ return x.id!==MOI; });
+  if(!autres.length) return;
+  var w=t.clientWidth, h=t.clientHeight;
+  // le centre de l arc est décalé vers le bas : les jetons du haut ne sont plus coupés
+  var cy=h/2+16;
+  var rx=Math.min(w/2-44, w*0.44), ry=Math.min(cy-52, h*0.44);
+  var n=autres.length;
+  autres.forEach(function(j,k){
+    // réparti sur l arc du haut, de gauche à droite
+    var frac = n===1 ? 0.5 : k/(n-1);
+    var ang = Math.PI + frac*Math.PI;                 // de 180° à 360° : la moitié haute
+    var x=w/2+Math.cos(ang)*rx, y=cy+Math.sin(ang)*ry*(n===1?1:0.96);
+    var estSonTour=(E.joueurs[E.tour].id===j.id);
+    var cls="siege"+(estSonTour&&!j.fui&&!j.pris?" actif":"")+(j.fui?" fui":"")+(j.pris?" pris":"");
+    var dos="";
+    for(var m=0;m<(j.cartesEnMain||0);m++) dos+='<div class="dos-mini"></div>';
+    var s=el("div",cls,
+      '<div class="jeton"><div class="nom">'+j.nom+'</div>'+
+      '<div class="sac chiffre">'+(j.pris?"—":valSac(j))+'</div>'+
+      (j.fui?'<div class="statut" style="color:#8df0c2">À L\'ABRI</div>'
+       :j.pris?'<div class="statut" style="color:#ffada3">PRIS</div>'
+       :!j.connecte?'<div class="statut" style="color:#ffada3">PARTI</div>'
+       :'<div class="tot">total '+j.total+'</div>')+
+      '<div class="mains">'+dos+'</div>'+
+      (estSonTour&&!j.fui&&!j.pris?'<div class="badge-tour">À LUI</div>':'')+
+      '</div>');
+    s.style.left=x+"px"; s.style.top=y+"px"; s.id="siege-"+k;
+    z.appendChild(s);
+  });
+}
+
+/* ---------- jouer une carte spéciale ---------- */
+function apercuSac(x,marquerMax){
+  if(!x.sac.length) return '<div class="apercu"><span class="vide">sac vide</span></div>';
+  var tri=x.sac.map(function(c,i){return {c:c,i:i};}).sort(function(a,b){return b.c.v-a.c.v;});
+  var montre=tri.slice(0,8), reste=tri.length-montre.length, h='<div class="apercu">';
+  montre.forEach(function(o,k){
+    var s=htmlCarte(o.c,"sm");
+    if(marquerMax&&k===0) s=s.replace('class="carte sm"','class="carte sm perdue"');
+    h+=s;
+  });
+  if(reste>0) h+='<span class="reste">+'+reste+'</span>';
+  h+='</div>';
+  if(marquerMax) h+='<div class="marque">perdra sa carte '+tri[0].c.v+'</div>';
+  return h;
+}
+function choisirCible(moi,c,idx){
+  var marquer=(c.k==="sacperce");
+  var cibles=E.joueurs.filter(function(x){
+    return x.id!==MOI && !x.fui && !x.pris &&
+      ((c.k!=="sacperce"&&c.k!=="vol")||x.sac.length);
+  });
+  if(c.k==="espion"){ envoyer({t:"speciale", index:idx}); return; }
+  if(!cibles.length){ toast("Aucune cible possible."); return; }
+  app.innerHTML='<div class="voile"><div class="entree">'+htmlCarte(c,"xl")+'</div>'+
+    '<div class="etiq" style="margin:16px 0 10px">Sur qui ?</div><div class="cible">'+
+    cibles.map(function(x,k){
+      return '<button class="b-sombre riche" data-i="'+k+'">'+
+        '<div class="entete"><span>'+x.nom+'</span><span class="pts">'+valSac(x)+' pts</span></div>'+
+        apercuSac(x,marquer)+'</button>';
+    }).join("")+
+    '<button class="b-rouge" id="annul">Annuler</button></div></div>';
+  Array.prototype.forEach.call(app.querySelectorAll("[data-i]"),function(b){
+    b.onclick=function(){
+      var cible=cibles[parseInt(b.dataset.i,10)];
+      if(c.k==="vol") return choisirCarteVolee(cible,idx);
+      envoyer({t:"speciale", index:idx, cible:cible.id});
+    };
+  });
+  $("#annul").onclick=dessiner;
+}
+function choisirCarteVolee(cible,idx){
+  app.innerHTML='<div class="voile"><div class="etiq">dans le sac de '+cible.nom+'</div>'+
+    '<div class="mainj" style="margin:18px 0;max-width:330px" id="sacc"></div>'+
+    '<div class="hint">Tape la carte que tu veux voler.</div></div>';
+  var p=$("#sacc");
+  cible.sac.forEach(function(c,k){
+    var d=el("div"); d.innerHTML=htmlCarte(c,"md");
+    var e=d.firstElementChild; e.className+=" jouable";
+    e.onclick=function(){
+      if(idx===null) envoyer({t:"speciale", cible:cible.id, carte:k});
+      else envoyer({t:"speciale", index:idx, cible:cible.id, carte:k});
+    };
+    p.appendChild(e);
+  });
+}
+
+/* ================= RÉVÉLATION (identique pour tous) ================= */
+function ecranRevelation(){
+  var ev=E.evenement, aMoi=(ev.pour===MOI), carte=ev.carte;
+  var titre="", detail="", coul="var(--or)", visuel="";
+  if(ev.type==="butin"){
+    var f=familleDe(carte.v);
+    coul=f.c; titre="+"+carte.v+" pour "+ev.nom;
+    detail=carte.v===10?"Un lingot ! La pièce maîtresse du coffre."
+      :"Ce butin n'est pas encore à l'abri : il faut fuir pour le garder.";
+    visuel=htmlCarte(carte,"xl");
+  }else if(ev.type==="alarme"){
+    coul="var(--sang)";
+    titre=ev.rang>=3?"TROISIÈME ALARME":(ev.rang===2?"DEUXIÈME ALARME":"PREMIÈRE ALARME");
+    detail=ev.rang>=3?"La police débarque…"
+      :(ev.rang===2?"Encore une et tous ceux qui sont là perdent tout.":"Deux alarmes encore avant la police.");
+    visuel=htmlCarte(carte,"xl");
+  }else if(ev.type==="speciale"){
+    coul=SPECIALES[carte.k].coul;
+    titre=SPECIALES[carte.k].nom;
+    detail=SPECIALES[carte.k].eff+" Personne d'autre ne sait ce que tu viens de piocher.";
+    visuel=htmlCarte(carte,"xl");
+  }else if(ev.type==="specialeCachee"){
+    coul="var(--or)";
+    titre=ev.nom+" pioche une carte spéciale";
+    detail="Impossible de savoir laquelle… elle rejoint sa main, face cachée.";
+    visuel=htmlDos("xl");
+  }else if(ev.type==="fuite"){
+    coul="var(--jade)"; titre=ev.nom+" file avec le magot";
+    detail="Sac sécurisé : "+ev.points+" points à l'abri.";
+    visuel='<div style="width:76px;height:76px;color:var(--jade)">'+EMBLEMES.fuite+'</div>';
+  }else if(ev.type==="vole"){
+    coul="var(--fuchsia)"; titre=ev.nom+" vole "+ev.carte.v+" à "+ev.victime;
+    detail="La carte rejoint son sac — mais elle n'est pas encore à l'abri.";
+    visuel=htmlCarte(ev.carte,"xl");
+  }else if(ev.type==="balance"){
+    coul="var(--amethyste)"; titre=ev.victime+" est balancé";
+    detail="À son prochain tour, "+ev.victime+" devra piocher : impossible de fuir.";
+    visuel='<div style="width:72px;height:72px;color:var(--amethyste)">'+EMBLEMES.balance+'</div>';
+  }else if(ev.type==="sacperce"){
+    coul="var(--ambre)"; titre=ev.victime+" perd "+ev.carte.v+" points";
+    detail="Sa plus grosse carte s'est échappée par le trou du sac.";
+    visuel=htmlCarte(ev.carte,"xl");
+  }else if(ev.type==="espion"){
+    coul="var(--jade)"; titre=ev.nom+" a réarrangé la pioche";
+    detail="Les trois prochaines cartes sortiront dans l'ordre de son choix.";
+    visuel='<div style="width:72px;height:72px;color:var(--jade)">'+EMBLEMES.espion+'</div>';
+  }
+  app.innerHTML='<div class="voile">'+
+    '<div class="entree">'+visuel+'</div>'+
+    '<div class="libelle" style="color:'+coul+'">'+titre+'</div>'+
+    '<div class="detail">'+detail+'</div>'+
+    (aMoi?'<button class="b-or" id="ok" style="margin-top:24px;min-width:220px">Continuer</button>'
+         :'<div class="hint" style="margin-top:24px">En attente de '+E.joueurs[E.tour].nom+'…</div>')+
+  '</div>';
+  if(aMoi) $("#ok").onclick=function(){ envoyer({t:"continuer"}); };
+}
+
+/* ================= LE VOL (effet immédiat) ================= */
+function ecranVol(){
+  var ev=E.evenement, aMoi=(ev.pour===MOI);
+  var cibles=E.joueurs.filter(function(x){ return x.id!==ev.pour && !x.fui && !x.pris && x.sac.length; });
+  if(!aMoi){
+    app.innerHTML='<div class="voile"><div class="entree" style="width:64px;height:64px;color:var(--fuchsia)">'+
+      EMBLEMES.vol+'</div><div class="libelle" style="color:var(--fuchsia)">LE VOL</div>'+
+      '<div class="detail">'+ev.nom+' choisit à qui prendre une carte…</div></div>';
+    return;
+  }
+  app.innerHTML='<div class="voile"><div class="entree" style="width:64px;height:64px;color:var(--fuchsia)">'+
+    EMBLEMES.vol+'</div><div class="libelle" style="color:var(--fuchsia)">LE VOL</div>'+
+    '<div class="etiq" style="margin:16px 0 10px">Chez qui piques-tu ?</div><div class="cible">'+
+    cibles.map(function(x,k){
+      return '<button class="b-sombre riche" data-i="'+k+'">'+
+        '<div class="entete"><span>'+x.nom+'</span><span class="pts">'+valSac(x)+' pts</span></div>'+
+        apercuSac(x,false)+'</button>';
+    }).join("")+'</div></div>';
+  Array.prototype.forEach.call(app.querySelectorAll("[data-i]"),function(b){
+    b.onclick=function(){ choisirCarteVolee(cibles[parseInt(b.dataset.i,10)],null); };
+  });
+}
+
+/* ================= L'ESPION ================= */
+function ecranEspion(){
+  var ev=E.evenement, aMoi=(ev.pour===MOI), trois=ev.trois||[];
+  if(!aMoi){
+    var combien=ev.combien||trois.length||3, dos="";
+    for(var d=0;d<combien;d++) dos+=htmlDos("md");
+    app.innerHTML='<div class="voile"><div class="entree" style="width:64px;height:64px;color:var(--jade)">'+
+      EMBLEMES.espion+'</div><div class="libelle" style="color:var(--jade)">L\'ESPION</div>'+
+      '<div class="detail">'+ev.nom+' inspecte les prochaines cartes du coffre… lui seul les voit.</div>'+
+      '<div class="mainj" style="margin-top:18px">'+dos+'</div></div>';
+    return;
+  }
+  var ordre=trois.map(function(_,i){return i;});
+  var choisie=-1;        // position sélectionnée, -1 si aucune
+  var posees=[];         // positions qui viennent d'être échangées (pour l'animation)
+  var RANGS=["1ʳᵉ","2ᵉ","3ᵉ"];
+
+  function dessine(){
+    var consigne = choisie<0
+      ? "Tape une carte pour la sélectionner."
+      : "Tape maintenant la carte avec laquelle l'échanger.";
+    app.innerHTML='<div class="voile"><div class="entree" style="width:56px;height:56px;color:var(--jade)">'+
+      EMBLEMES.espion+'</div><div class="libelle" style="color:var(--jade)">LES 3 PROCHAINES</div>'+
+      '<div class="consigne'+(choisie<0?"":" actif")+'">'+consigne+'</div>'+
+      '<div class="choix" id="tr"></div>'+
+      '<div class="etiq" style="margin-top:14px">ordre de sortie, de gauche à droite</div>'+
+      '<button class="b-or" id="ok" style="margin-top:18px;min-width:220px">Valider cet ordre</button></div>';
+    var p=$("#tr");
+    ordre.forEach(function(idx,pos){
+      var cls="case"+(pos===choisie?" choisie":"")+(posees.indexOf(pos)>=0?" pose":"");
+      var case_=el("div",cls);
+      var d=el("div"); d.innerHTML=htmlCarte(trois[idx],"lg");
+      case_.appendChild(d.firstElementChild);
+      case_.appendChild(el("div","rang",RANGS[pos]));
+      case_.onclick=function(){ toucher(pos); };
+      p.appendChild(case_);
+    });
+    posees=[];
+    $("#ok").onclick=function(){ envoyer({t:"ordre", ordre:ordre}); };
+  }
+
+  function toucher(pos){
+    if(choisie<0){                      // première touche : on sélectionne
+      choisie=pos; sonSpeciale(); vibre(12);
+      dessine(); return;
+    }
+    if(choisie===pos){                  // même carte : on annule la sélection
+      choisie=-1; vibre(8);
+      dessine(); return;
+    }
+    var t=ordre[choisie];               // deuxième touche : on échange les deux
+    ordre[choisie]=ordre[pos];
+    ordre[pos]=t;
+    posees=[choisie,pos];
+    choisie=-1;
+    sonPiece(); vibre([10,40,10]);
+    dessine();
+  }
+  dessine();
+}
+
+/* ================= POLICE ================= */
+function ecranPolice(){
+  var ev=E.evenement;
+  app.innerHTML='<div class="voile"><div class="secoue" style="width:88px;height:88px;color:var(--sang)">'+
+    EMBLEMES.police+'</div>'+
+    '<div class="titre" style="font-size:25px;color:var(--sang);margin-top:12px">LA POLICE DÉBARQUE</div>'+
+    '<div class="panneau" style="max-width:340px;width:100%;margin-top:16px">'+
+      (ev.pris.length?ev.pris.map(function(n){
+        return '<div class="ligne"><span>'+n+'</span><span class="tag pris">sac confisqué</span></div>';}).join("")
+        :'<div class="hint">Personne ne s\'est fait prendre !</div>')+
+      ev.sauves.map(function(n){
+        return '<div class="ligne"><span>'+n+'</span><span class="tag fui">sauvé par le Complice</span></div>';}).join("")+
+    '</div><button class="b-or" id="ok" style="margin-top:20px;min-width:220px">Fin de la manche</button></div>';
+  $("#ok").onclick=function(){ envoyer({t:"mancheSuivante"}); };
+}
+
+/* ================= FIN DE MANCHE ================= */
+function ecranFinManche(){
+  app.innerHTML=
+    '<h1 class="titre" style="font-size:21px">FIN DE LA MANCHE '+E.manche+'</h1>'+
+    '<div class="filet"><i></i></div>'+
+    '<div class="panneau scroll" style="flex:1">'+
+      E.classement.map(function(c,i){
+        return '<div class="ligne"><span>'+(i===0?'<span style="color:var(--or)">◆ </span>':"")+c.nom+
+          (c.id===MOI?' <span class="tag">toi</span>':'')+'</span>'+
+          '<span><span class="etiq">+'+c.gagne+'</span> &nbsp; <span class="pts">'+c.total+'</span></span></div>';
+      }).join("")+
+    '</div>'+
+    '<button class="b-or" id="suite">Manche suivante</button>';
+  $("#suite").onclick=function(){ envoyer({t:"mancheSuivante"}); };
+}
+
+/* ================= VICTOIRE ================= */
+function ecranVictoire(){
+  var g=E.classement[0];
+  app.innerHTML=
+    '<div class="spacer"></div>'+
+    '<div class="centre entree" style="width:88px;height:88px;margin:0 auto;color:var(--or)">'+EMBLEMES.trophee+'</div>'+
+    '<h1 class="titre" style="font-size:28px">'+g.nom+'</h1>'+
+    '<div class="centre" style="color:var(--or-clair);font-size:15px;letter-spacing:.14em;'+
+      'font-family:Cinzel,Georgia,serif">LE CERVEAU DU SIÈCLE</div>'+
+    '<div class="centre chiffre" style="font-size:56px;color:var(--or);margin:6px 0 14px">'+g.total+'</div>'+
+    '<div class="panneau">'+E.classement.slice(1).map(function(c,i){
+      return '<div class="ligne"><span>'+(i+2)+'. '+c.nom+'</span><span class="pts">'+c.total+'</span></div>';
+    }).join("")+'</div>'+
+    '<div class="spacer"></div>'+
+    (E.hote===MOI?'<button class="b-or" id="rejouer">Refaire un casse</button>'
+      :'<div class="hint">En attente du chef de bande…</div>')+
+    '<button class="b-sombre" id="menu" style="margin-top:10px">Quitter la table</button>';
+  if(E.hote===MOI) $("#rejouer").onclick=function(){ envoyer({t:"rejouer"}); };
+  $("#menu").onclick=function(){ if(SOCK) SOCK.close(); E=null; DERNIER=null; ecranAccueil(); };
+}
+
+/* ================= RÈGLES ================= */
+function ecranRegles(){
+  var sp="";
+  for(var k in SPECIALES) sp+='<div class="ligne" style="align-items:flex-start">'+
+    '<b style="color:'+SPECIALES[k].coul+';min-width:104px;font-size:12px;display:flex;align-items:center;gap:6px">'+
+    '<span style="width:20px;height:20px;display:inline-block;flex:0 0 auto">'+EMBLEMES[k]+'</span>'+SPECIALES[k].nom+'</b>'+
+    '<span style="font-size:12.5px;text-align:right;flex:1;line-height:1.45">'+SPECIALES[k].eff+'</span></div>';
+  app.innerHTML=
+    '<div class="scroll" style="flex:1">'+
+      '<h1 class="titre" style="font-size:22px">LE PLAN DU CASSE</h1><div class="filet"><i></i></div>'+
+      '<div class="panneau"><b style="color:var(--or)">Chacun son téléphone</b>'+
+      '<p style="font-size:14px;line-height:1.6;margin:6px 0 0">Un joueur monte le casse et annonce le code à 4 lettres. '+
+      'Les autres le tapent sur leur téléphone. Tout le monde voit la même table.</p></div>'+
+      '<div class="panneau"><b style="color:var(--or)">À ton tour</b>'+
+      '<p style="font-size:14px;line-height:1.6;margin:6px 0 0">Tape le coffre pour <b>piocher</b>, ou prends la <b>fuite</b>. '+
+      'Fuir met ton sac à l\'abri, mais tu ne joues plus jusqu\'à la fin de la manche.</p></div>'+
+      '<div class="panneau"><b style="color:var(--sang)">Le danger</b>'+
+      '<p style="font-size:14px;line-height:1.6;margin:6px 0 0">Neuf alarmes dans la pioche. À la <b>3ᵉ</b>, la police débarque : '+
+      'tous ceux qui sont encore dans le coffre perdent tout.</p></div>'+
+      '<div class="panneau"><b style="color:var(--or)">Gagner</b>'+
+      '<p style="font-size:14px;line-height:1.6;margin:6px 0 0">Premier à 100 points : le cerveau du siècle !</p></div>'+
+      '<div class="panneau"><b style="color:var(--or-clair)">Les cartes spéciales</b>'+sp+'</div>'+
+    '</div>'+
+    '<button class="b-or" id="retour" style="margin-top:10px">Retour</button>';
+  $("#retour").onclick=function(){ E?dessiner():ecranAccueil(); };
+}
+
+window.addEventListener("resize",function(){
+  if(E&&(E.phase==="tour")&&$("#sieges")){ $("#sieges").innerHTML=""; placerSieges(); }
+});
+ecranAccueil();
+
+</script>
+</body>
+</html>
