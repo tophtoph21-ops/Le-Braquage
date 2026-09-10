@@ -339,17 +339,17 @@ input[type=text]::placeholder{color:#5f6d87}
 .apercu .reste{font-size:11px;color:var(--brume);align-self:center;padding-left:3px}
 .marque{font-size:9.5px;font-weight:800;color:var(--ambre);letter-spacing:.1em;text-transform:uppercase}
 /* bouton de sortie : discret, en haut à gauche */
-#sortir{position:absolute;top:calc(env(safe-area-inset-top) + 3px);left:4px;z-index:6;
+#sortir{position:absolute;top:calc(env(safe-area-inset-top) + 6px);left:4px;z-index:6;
   background:none;border:none;box-shadow:none;clip-path:none;
-  padding:5px 7px;opacity:.72;display:flex;align-items:center;gap:4px;
+  padding:7px 9px;opacity:.85;display:flex;align-items:center;gap:5px;
   letter-spacing:0;text-transform:none;font-weight:600}
-#sortir:active{opacity:.85;transform:none}
-#sortir svg{width:14px;height:14px;display:block;color:var(--or);flex:0 0 auto}
-#sortir span{font-size:10px;letter-spacing:.09em;color:#fff;text-transform:uppercase;
+#sortir:active{opacity:1;transform:none}
+#sortir svg{width:17px;height:17px;display:block;color:var(--or);flex:0 0 auto}
+#sortir span{font-size:11.5px;letter-spacing:.1em;color:#fff;text-transform:uppercase;
   text-shadow:0 1px 3px rgba(0,0,0,.9)}
-#son{position:absolute;top:calc(env(safe-area-inset-top) + 4px);right:8px;z-index:6;
-  background:none;box-shadow:none;padding:6px;opacity:.5;clip-path:none}
-#son svg{width:19px;height:19px;display:block}
+#son{position:absolute;top:calc(env(safe-area-inset-top) + 7px);right:6px;z-index:6;
+  background:none;box-shadow:none;padding:7px;opacity:.8;clip-path:none}
+#son svg{width:21px;height:21px;display:block}
 
 /* ============ ENTRER DANS LA BANQUE ============ */
 /* pendant la transition on coupe toutes les animations d'ambiance :
@@ -460,10 +460,10 @@ input[type=text]::placeholder{color:#5f6d87}
   text-transform:uppercase;color:var(--or-clair);margin-right:4px}
 
 /* ============ DISCUSSION ============ */
-#bulle{position:absolute;top:calc(env(safe-area-inset-top) + 2px);right:40px;z-index:6;
-  background:none;border:none;box-shadow:none;clip-path:none;padding:6px;opacity:.7;
+#bulle{position:absolute;top:calc(env(safe-area-inset-top) + 6px);right:52px;z-index:6;
+  background:none;border:none;box-shadow:none;clip-path:none;padding:7px;opacity:.85;
   display:flex;align-items:center}
-#bulle svg{width:18px;height:18px;display:block;color:var(--or)}
+#bulle svg{width:21px;height:21px;display:block;color:var(--or)}
 #bulle .pastille-msg{position:absolute;top:1px;right:0;min-width:15px;height:15px;
   border-radius:99px;background:var(--sang);color:#fff;font-size:9px;font-weight:800;
   display:flex;align-items:center;justify-content:center;padding:0 4px;
@@ -1712,7 +1712,7 @@ function ecranSalon(){
   var suisHote=(E.hote===MOI);
   app.innerHTML=
     boutonChat()+
-    '<h1 class="titre" style="font-size:21px;margin-top:12px">LA BANDE SE RÉUNIT</h1>'+
+    '<h1 class="titre" style="font-size:21px;margin-top:44px">LA BANDE SE RÉUNIT</h1>'+
     '<div class="filet"><i></i></div>'+
     '<div class="panneau centre"><div class="etiq">Code de la partie</div>'+
       '<div class="chiffre" style="font-size:52px;letter-spacing:.24em;color:var(--or-clair);'+
@@ -1771,7 +1771,7 @@ function ecranTable(){
     boutonSortir()+
     boutonChat()+
     '<button id="son">'+iconeSon()+'</button>'+
-    '<div class="ligne" style="padding:11px 0 2px;gap:8px">'+
+    '<div class="ligne" style="padding:46px 0 5px;gap:8px">'+
       '<span class="etiq" style="letter-spacing:.08em;white-space:nowrap">M'+E.manche+(E.solo?"":" · "+E.code)+'</span>'+
       '<span class="etiq" style="letter-spacing:.08em;white-space:nowrap">'+E.restantes+' cartes · '+E.cible+' pts</span></div>'+
     '<div id="matable">'+
@@ -2446,7 +2446,7 @@ function dessinerDidac(e){
 
   app.innerHTML=
     boutonSortir()+
-    '<div class="ligne" style="padding:11px 0 2px"><span class="etiq">Apprentissage</span>'+
+    '<div class="ligne" style="padding:46px 0 5px"><span class="etiq">Apprentissage</span>'+
       '<span class="etiq">'+D.restantes+' cartes · but 100 pts</span></div>'+
     '<div id="matable" class="serre">'+
       '<div class="lampes'+(D.zone==="lampes"?" guide":"")+'">'+lampes+'</div>'+
@@ -2551,7 +2551,7 @@ function ecranGalerieCartes(){
   }
   app.innerHTML=
     boutonSortir()+
-    '<h1 class="titre" style="font-size:21px;margin-top:12px">LES CARTES SPÉCIALES</h1><div class="filet"><i></i></div>'+
+    '<h1 class="titre" style="font-size:21px;margin-top:44px">LES CARTES SPÉCIALES</h1><div class="filet"><i></i></div>'+
     '<div class="scroll" style="flex:1">'+
       '<div class="hint" style="margin-bottom:10px">Elles ne rapportent aucun point, mais changent le cours d\'une manche. '+
       'Les quatre dernières sont rares : deux exemplaires seulement.</div>'+
