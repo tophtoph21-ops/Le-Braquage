@@ -23,7 +23,7 @@
   /* accents */
   --sang:#d43a2c; --sang-f:#6e1810;
   --jade:#31b98a; --lagon:#2aa5c9; --amethyste:#a273e0; --nuitbleu:#3d7fd6;
-  --ambre:#e89234; --fuchsia:#e8397f; --acier:#93a9c9; --rose:#ff86c0;
+  --ambre:#e89234; --fuchsia:#e8397f; --acier:#93a9c9; --rose:#ff86c0; --menthe:#5fe0c0;
   --papier:#f4ecd8; --brume:#8d9ab5;
   --ombre:0 14px 38px rgba(0,0,0,.7);
 }
@@ -425,6 +425,13 @@ input[type=text]::placeholder{color:#5f6d87}
 .siege.compact .dos-mini{width:9px;height:13px}
 .siege.compact .badge-tour{font-size:6.5px;padding:1px 5px;bottom:-6px}
 .siege .plus{font-size:8px;color:var(--brume);align-self:center}
+.badge-tour.suivant{background:rgba(227,192,92,.25);color:var(--or-clair);
+  box-shadow:inset 0 0 0 1px var(--or)}
+.rang-tour{position:absolute;top:-6px;left:-6px;width:17px;height:17px;
+  background:var(--nuitbleu);color:#fff;font-size:9.5px;font-weight:800;
+  display:flex;align-items:center;justify-content:center;border-radius:99px;
+  box-shadow:0 0 0 2px var(--encre)}
+.siege.suivant .rang-tour{background:var(--or);color:#241a00}
 .badge-tour{position:absolute;left:50%;transform:translateX(-50%);bottom:-7px;
   font-size:8px;font-weight:800;letter-spacing:.1em;color:#241a00;background:var(--or);
   padding:1px 7px;white-space:nowrap}
@@ -446,6 +453,9 @@ input[type=text]::placeholder{color:#5f6d87}
   55%{transform:translateY(5px) scale(.96)}
   78%{transform:translateY(-6px) scale(1.02)}
   100%{transform:translateY(0) scale(1)}}
+.choix .case.pourmoi .carte{box-shadow:0 0 0 2px var(--or-clair)}
+.rang.moi{color:#241a00;background:var(--or-clair);font-weight:800;box-shadow:none}
+.choix{flex-wrap:wrap;max-width:340px}
 .rang{font-family:"Cinzel",Georgia,serif;font-size:10px;letter-spacing:.12em;color:var(--brume);
   padding:3px 10px;box-shadow:inset 0 0 0 1px rgba(227,192,92,.3);transition:all .2s}
 .choix .case:first-child .rang{color:var(--or-clair);box-shadow:inset 0 0 0 1px rgba(227,192,92,.75)}
@@ -588,7 +598,7 @@ function etincelles(x,y,n,coul){
 var QTES={1:8,2:8,3:8,4:7,5:7,6:6,7:5,8:4,9:3,10:4};
 var SPECIALES={
   balance:{nom:"BALANCE",coul:"var(--amethyste)",ico:"\u2757",
-    eff:"Ta cible est obligée de piocher à son prochain tour. Interdit de fuir !"},
+    eff:"Ta cible est obligée de piocher à son prochain tour, interdit de fuir. Toi, tu gardes la main : à toi de piocher ou de fuir ensuite."},
   complice:{nom:"COMPLICE",coul:"var(--nuitbleu)",ico:"\uD83E\uDD1D",
     eff:"Quand la police débarque, ton sac est sauvé et sécurisé malgré tout."},
   sacperce:{nom:"SAC PERCÉ",coul:"var(--ambre)",ico:"\uD83D\uDCB0",
@@ -603,6 +613,8 @@ var SPECIALES={
     eff:"Éteins une alarme déjà déclenchée : le compteur redescend d'un cran."},
   monteenlair:{nom:"MONTE-EN-L'AIR",coul:"var(--acier)",ico:"",
     eff:"Rejoue deux fois de suite : deux pioches d'affilée, à tes risques et périls."},
+  pickpocket:{nom:"LE PICKPOCKET",coul:"var(--menthe)",ico:"",
+    eff:"Fouille la main d'un adversaire, découvre ses cartes spéciales et prends celle que tu veux."},
   troc:{nom:"LE TROC",coul:"var(--rose)",ico:"",
     eff:"Échange ton sac entier avec celui d'un adversaire encore dans le coffre."}
 };
@@ -658,6 +670,11 @@ var EMBLEMES={
   monteenlair:svg('<path d="M30 86L58 18" stroke-width="6"/><path d="M52 88L80 20" stroke-width="6"/>'+
     '<path d="M36 74h26M42 60h26M48 46h26M54 32h26" stroke-width="5"/>'+
     '<circle cx="72" cy="16" r="9" fill="currentColor" opacity=".25"/><circle cx="72" cy="16" r="9"/>'),
+  pickpocket:svg('<path d="M26 44h30v34a8 8 0 01-8 8H34a8 8 0 01-8-8z" fill="currentColor" opacity=".18"/>'+
+    '<path d="M26 44h30v34a8 8 0 01-8 8H34a8 8 0 01-8-8z"/>'+
+    '<path d="M34 44V30a7 7 0 0114 0v14"/>'+
+    '<path d="M62 30c8 2 14 8 16 16M64 46c6 2 10 6 12 12" stroke-width="5"/>'+
+    '<circle cx="44" cy="62" r="5"/>'),
   troc:svg('<path d="M22 38h44l-12-12" stroke-width="6"/><path d="M78 62H34l12 12" stroke-width="6"/>'+
     '<circle cx="24" cy="70" r="9" fill="currentColor" opacity=".22"/><circle cx="24" cy="70" r="9"/>'+
     '<circle cx="76" cy="30" r="9" fill="currentColor" opacity=".22"/><circle cx="76" cy="30" r="9"/>'),
@@ -682,6 +699,7 @@ var EMBLEMES={
     '<path d="M45 46h18M45 55h20M45 64h16"/><path d="M20 44v26"/>')
 };
 function familleDe(v){
+  if(v>=50) return {n:"LE MAGOT",c:"var(--or-clair)",e:"lingot"};
   if(v<=3) return {n:"BILLETS",c:"var(--jade)",e:"billets"};
   if(v<=6) return {n:"BIJOUX",c:"var(--lagon)",e:"bijoux"};
   if(v<=9) return {n:"DIAMANTS",c:"var(--amethyste)",e:"diamants"};
@@ -830,7 +848,8 @@ const QTES = {1:8,2:8,3:8,4:7,5:7,6:6,7:5,8:4,9:3,10:4};
 const SPECIALES = {
   balance:3, sacperce:3, espion:3, vol:3,
   monteenlair:3,     // gourmandise : deux pioches d'affilée
-  complice:2,        // rare : elle sauve tout un sac
+  pickpocket:2,      // fouiller la main d'un adversaire et lui prendre une carte
+  complice:1,        // la plus rare de toutes : elle sauve un sac entier de la police
   planque:2,         // rare aussi : elle met du butin définitivement à l'abri
   courtcircuit:2,    // rare : elle éteint une alarme
   troc:2             // rare : elle échange deux sacs entiers
@@ -842,7 +861,8 @@ function objectifValide(v){ return OBJECTIFS.indexOf(v|0)>=0 ? (v|0) : 100; }
 const NOMS_SP = {
   balance:"BALANCE", complice:"COMPLICE", sacperce:"SAC PERCÉ",
   espion:"L'ESPION", vol:"LE VOL", planque:"LA PLANQUE",
-  courtcircuit:"LE COURT-CIRCUIT", monteenlair:"MONTE-EN-L'AIR", troc:"LE TROC"
+  courtcircuit:"LE COURT-CIRCUIT", monteenlair:"MONTE-EN-L'AIR", troc:"LE TROC",
+  pickpocket:"LE PICKPOCKET"
 };
 
 function melange(a){
@@ -890,9 +910,12 @@ function positionsAlarmes(taille, combien, f){
   return [...prises].sort((x,y)=>x-y);
 }
 
-function neufPaquet(nbJoueurs){
+function neufPaquet(nbJoueurs, cible){
   const f=souffle(nbJoueurs);
   const reste=[];
+  // parties longues : un magot unique, glissé une seule fois dans la manche
+  if(cible>=500) reste.push({t:"butin", v:100});
+  else if(cible>=300) reste.push({t:"butin", v:50});
   // le butin grossit avec la table : de quoi alimenter les tours supplémentaires
   for(const v in QTES){
     const combien=Math.round(QTES[v]*f);
@@ -945,8 +968,15 @@ function filtrerEvenement(ev, pourId){
     return {type:"specialeCachee", nom:ev.nom, pour:ev.pour};
   }
   // les 3 cartes de l'Espion ne sont vues que par lui
+  if(ev.type==="pickpocketChoix" && ev.pour!==pourId){
+    return {type:"pickpocketAttente", nom:ev.nom, victime:ev.victime, pour:ev.pour,
+            combien:(ev.cartes||[]).length};
+  }
+  if(ev.type==="pickpocketPris" && ev.pour!==pourId){
+    return {type:"pickpocketPrisCache", nom:ev.nom, victime:ev.victime, pour:ev.pour};
+  }
   if(ev.type==="espionChoix" && ev.pour!==pourId){
-    return {type:"espionAttente", nom:ev.nom, pour:ev.pour, combien:(ev.trois||[]).length};
+    return {type:"espionAttente", nom:ev.nom, pour:ev.pour, combien:(ev.cartes||[]).length};
   }
   return ev;
 }
@@ -975,6 +1005,17 @@ function diffuser(s){
 }
 function joueurCourant(s){ return s.joueurs[s.tour]; }
 
+/* qui joue après qui, en partant du joueur suivant : sert à l'Espion
+   (chaque carte révélée ira à un joueur précis) et à l'affichage de la table */
+function ordreDePassage(s, depuis){
+  const n=s.joueurs.length, suite=[];
+  for(let k=1; k<=n; k++){
+    const j=s.joueurs[(depuis+k)%n];
+    if(!j.fui && !j.pris && j.connecte) suite.push(j);
+  }
+  return suite;
+}
+
 function tourSuivant(s){
   if(!actifs(s).length || !s.pioche.length){ return finManche(s); }
   let n=s.tour, t=0;
@@ -984,9 +1025,9 @@ function tourSuivant(s){
 }
 
 function nouvelleManche(s, premier){
-  s.manche++; s.pioche=neufPaquet(s.joueurs.length); s.alarmes=0; s.premierFuyard=null;
+  s.manche++; s.pioche=neufPaquet(s.joueurs.length, s.cible); s.alarmes=0; s.premierFuyard=null;
   s.evenement=null; s.apercu=null; s.classement=null;
-  s.joueurs.forEach(j=>{ j.sac=[]; j.main=[]; j.planque=[]; j.fui=false; j.pris=false; j.force=false; j.rab=0; });
+  s.joueurs.forEach(j=>{ j.sac=[]; j.main=[]; j.planque=[]; j.fui=false; j.pris=false; j.force=false; j.rab=0; j.reprise=false; });
   s.tour = premier % s.joueurs.length;
   if(!s.joueurs[s.tour].connecte) tourSuivant(s);
   s.phase="tour";
@@ -1055,6 +1096,14 @@ function piocher(s, joueur){
 function continuer(s, joueur){
   if(s.phase!=="revele" || joueurCourant(s)!==joueur) return;
   const suite=s.apercu; s.apercu=null;
+  // une carte spéciale se joue EN PLUS de son action : on rend la main au joueur,
+  // libre à lui de piocher ou de fuir ensuite
+  if(!suite && joueur.reprise && !joueur.fui && !joueur.pris){
+    joueur.reprise=false;
+    s.phase="tour"; s.evenement=null;
+    return;
+  }
+  joueur.reprise=false;
   if(!suite && joueur.rab>0 && !joueur.fui && !joueur.pris){
     joueur.rab--;                              // Monte-en-l'air : il rejoue
     s.phase="tour"; s.evenement=null;
@@ -1070,9 +1119,22 @@ function continuer(s, joueur){
   tourSuivant(s);
 }
 
+function prendreCarte(s, joueur, m){
+  if(s.phase!=="pickpocket" || joueurCourant(s)!==joueur) return;
+  const proie=s.joueurs.find(x=>x.id===s.evenement.victimeId);
+  if(!proie || !proie.main.length){ s.phase="tour"; s.evenement=null; return; }
+  const i=Math.max(0, Math.min(m.index|0, proie.main.length-1));
+  const prise=proie.main.splice(i,1)[0];
+  joueur.main.push(prise);
+  s.phase="revele"; s.apercu=null;
+  s.evenement={type:"pickpocketPris", pour:joueur.id, nom:joueur.nom,
+               victime:proie.nom, carte:prise};
+}
+
 function ordreEspion(s, joueur, m){
   if(s.phase!=="espion" || joueurCourant(s)!==joueur) return;
-  const n=Math.min(3, s.pioche.length);
+  const vues=(s.evenement && s.evenement.cartes) ? s.evenement.cartes.length : 3;
+  const n=Math.min(vues, s.pioche.length);
   const tete=s.pioche.slice(0,n);
   const ordre=(m.ordre||[]).map(i=>i|0).filter(i=>i>=0 && i<n);
   const uniques=[...new Set(ordre)];
@@ -1110,8 +1172,15 @@ function jouerSpeciale(s, joueur, m){
   if(!c) return;
   if(c.k==="espion"){
     joueur.main.splice(idx,1);
+    // il voit autant de cartes qu'il reste de joueurs dans le coffre :
+    // de quoi savoir exactement laquelle lui reviendra
+    // il garde la main : la première carte lui reviendra s'il pioche
+    const suite=[joueur].concat(ordreDePassage(s, s.tour));
+    const combien=Math.min(Math.max(1,actifs(s).length), s.pioche.length);
     s.phase="espion"; s.apercu=null;
-    s.evenement={type:"espionChoix", trois:s.pioche.slice(0,3), nom:joueur.nom, pour:joueur.id};
+    s.evenement={type:"espionChoix", cartes:s.pioche.slice(0,combien),
+                 pour:joueur.id, nom:joueur.nom,
+                 noms:suite.slice(0,combien).map(j=>({id:j.id, nom:j.nom}))};
     return;
   }
   if(c.k==="vol"){
@@ -1123,6 +1192,15 @@ function jouerSpeciale(s, joueur, m){
     joueur.sac.push(volee);
     s.phase="revele"; s.apercu=null;
     s.evenement={type:"vole", carte:volee, nom:joueur.nom, victime:cible.nom, pour:joueur.id};
+    return;
+  }
+  if(c.k==="pickpocket"){
+    const proie=s.joueurs.find(x=>x.id===m.cible);
+    if(!proie || proie===joueur || proie.fui || proie.pris || !proie.main.length) return;
+    joueur.main.splice(idx,1);
+    s.phase="pickpocket"; s.apercu=null;
+    s.evenement={type:"pickpocketChoix", pour:joueur.id, nom:joueur.nom,
+                 victime:proie.nom, victimeId:proie.id, cartes:proie.main.slice()};
     return;
   }
   if(c.k==="monteenlair"){
@@ -1166,6 +1244,7 @@ function jouerSpeciale(s, joueur, m){
   if(c.k==="balance"){
     joueur.main.splice(idx,1);
     cible.force=true;
+    joueur.reprise=true;        // seule la Balance laisse le choix : piocher ou fuir
     s.phase="revele"; s.apercu=null;
     s.evenement={type:"balance", nom:joueur.nom, victime:cible.nom, pour:joueur.id};
     return;
@@ -1228,6 +1307,17 @@ function botJoueSpeciale(s,j){
       return true;
     }
   }
+  // le Pickpocket : il fouille celui qui a le plus de cartes
+  const pp=j.main.findIndex(c=>c.k==="pickpocket");
+  if(pp>=0){
+    const riches=actifs(s).filter(x=>x!==j && x.main.length);
+    if(riches.length){
+      let cible=riches[0];
+      riches.forEach(x=>{ if(x.main.length>cible.main.length) cible=x; });
+      jouerSpeciale(s,j,{index:pp, cible:cible.id});
+      return true;
+    }
+  }
   // le Monte-en-l'air : tant qu'il n'y a pas d'alarme, on double la mise
   const ml=j.main.findIndex(c=>c.k==="monteenlair");
   if(ml>=0 && (trop || (s.alarmes===0 && Math.random()<0.6))){
@@ -1287,6 +1377,10 @@ function botAgit(s){
     jouerSpeciale(s,j,{cible:cible.id, carte:meilleure});
     return;
   }
+  if(s.phase==="pickpocket"){
+    prendreCarte(s,j,{index:crypto.randomInt(Math.max(1,(s.evenement.cartes||[]).length))});
+    return;
+  }
   if(s.phase==="espion"){
     // il place la meilleure carte en premier, l'alarme en dernier
     const n=Math.min(3,s.pioche.length);
@@ -1301,7 +1395,7 @@ function planifierBot(s){
   if(!s.joueurs.some(estBot)) return;   // solo comme multijoueur : dès qu'il y a un complice
   const j=joueurCourant(s);
   if(!j || !estBot(j)) return;
-  if(["tour","revele","vol","espion"].indexOf(s.phase)<0) return;
+  if(["tour","revele","vol","espion","pickpocket"].indexOf(s.phase)<0) return;
   const jeton=++s.jetonBot;
   const delai = s.phase==="revele" ? 1300 : 900;   // le temps de lire l'écran
   setTimeout(()=>{
@@ -1603,6 +1697,7 @@ function dessiner(){
     case "revele":    return ecranRevelation();
     case "vol":       return ecranVol();
     case "espion":    return ecranEspion();
+    case "pickpocket":return ecranPickpocket();
     case "police":    return ecranPolice();
     case "finManche": return ecranFinManche();
     case "victoire":  return ecranVictoire();
@@ -1787,7 +1882,8 @@ function ecranTable(){
     '</div>'+
     '<div class="centre" style="margin:2px 0 0">'+
       (aMoi?'<div class="titre" style="font-size:19px;letter-spacing:.14em">À TOI DE JOUER</div>'
-           :'<div class="etiq">au tour de <b style="color:var(--or-clair);font-size:13px">'+j.nom+'</b></div>')+
+           :'<div class="etiq">au tour de <b style="color:var(--or-clair);font-size:13px">'+j.nom+'</b>'+
+            (maPlace()?' · <span style="color:var(--or)">tu joues dans '+maPlace()+'</span>':'')+'</div>')+
     '</div>'+
     zoneMoi(moi,aMoi);
 
@@ -1804,6 +1900,19 @@ function ecranTable(){
 }
 
 /* ---------- ma zone : mon butin, ma main, mes boutons ---------- */
+/* dans combien de tours est-ce à moi ? */
+function maPlace(){
+  var moi=moiJoueur();
+  if(!moi || moi.fui || moi.pris) return "";
+  if(E.joueurs[E.tour] && E.joueurs[E.tour].id===MOI) return "";   // c'est déjà à moi
+  var n=E.joueurs.length, compte=0;
+  for(var k=1;k<=n;k++){
+    var j=E.joueurs[(E.tour+k)%n];
+    if(j.id===MOI) return compte===0 ? "un tour" : (compte+1)+" tours";
+    if(!j.fui && !j.pris && j.connecte) compte++;
+  }
+  return "";
+}
 function zoneMoi(moi,aMoi){
   if(!moi) return "";
   var butin=moi.sac.slice().sort(function(a,b){return b.v-a.v;})
@@ -1907,7 +2016,7 @@ function habillerPorte(){
 }
 
 /* ---------- les autres joueurs : autour du haut du coffre ---------- */
-function jetonHTML(j,compact,estSonTour){
+function jetonHTML(j,compact,estSonTour,rang,estSuivant){
   var dos="", combien=j.cartesEnMain||0, montre=Math.min(combien, compact?3:5);
   for(var q=0;q<montre;q++) dos+='<div class="dos-mini"></div>';
   if(combien>montre) dos+='<span class="plus">+'+(combien-montre)+'</span>';
@@ -1918,15 +2027,26 @@ function jetonHTML(j,compact,estSonTour){
      :!j.connecte?'<div class="statut" style="color:#ffada3">PARTI</div>'
      :(compact?'':'<div class="tot">total '+j.total+'</div>'))+
     '<div class="mains">'+dos+'</div>'+
-    (estSonTour&&!j.fui&&!j.pris?'<div class="badge-tour">À LUI</div>':'')+
+    (estSonTour&&!j.fui&&!j.pris?'<div class="badge-tour">À LUI</div>'
+     :(estSuivant?'<div class="badge-tour suivant">APRÈS TOI</div>':''))+
+    (rang&&!j.fui&&!j.pris?'<div class="rang-tour">'+rang+'</div>':'')+
     '</div>';
 }
 function placerSieges(){
   var z=$("#sieges"), t=$("#matable");
   if(!z||!t) return;
-  var autres=E.joueurs.filter(function(x){ return x.id!==MOI; });
+  // rangés dans l'ordre où ils vont jouer après moi, et non dans l'ordre du serveur
+  var n0=E.joueurs.length, moiIdx=0;
+  E.joueurs.forEach(function(j,i){ if(j.id===MOI) moiIdx=i; });
+  var autres=[];
+  for(var k=1;k<n0;k++) autres.push(E.joueurs[(moiIdx+k)%n0]);
   if(!autres.length) return;
   var n=autres.length;
+  // qui joue juste après moi (en sautant ceux qui sont sortis)
+  var suivant=null;
+  for(var q=0;q<autres.length;q++){
+    if(!autres[q].fui && !autres[q].pris && autres[q].connecte){ suivant=autres[q].id; break; }
+  }
 
   // à partir de 6 adversaires : grille compacte en haut, coffre resserré dessous
   if(n>5){
@@ -1935,8 +2055,8 @@ function placerSieges(){
     autres.forEach(function(j,k){
       var estSonTour=(E.joueurs[E.tour].id===j.id);
       var cls="siege compact"+(estSonTour&&!j.fui&&!j.pris?" actif":"")+
-        (j.fui?" fui":"")+(j.pris?" pris":"");
-      var s=el("div",cls,jetonHTML(j,true,estSonTour));
+        (j.fui?" fui":"")+(j.pris?" pris":"")+(j.id===suivant?" suivant":"");
+      var s=el("div",cls,jetonHTML(j,true,estSonTour,k+1,j.id===suivant));
       s.id="siege-"+k;
       z.appendChild(s);
     });
@@ -1953,8 +2073,9 @@ function placerSieges(){
     var ang = Math.PI + frac*Math.PI;
     var x=w/2+Math.cos(ang)*rx, y=cy+Math.sin(ang)*ry*(n===1?1:0.96);
     var estSonTour=(E.joueurs[E.tour].id===j.id);
-    var cls="siege"+(estSonTour&&!j.fui&&!j.pris?" actif":"")+(j.fui?" fui":"")+(j.pris?" pris":"");
-    var s=el("div",cls,jetonHTML(j,false,estSonTour));
+    var cls="siege"+(estSonTour&&!j.fui&&!j.pris?" actif":"")+(j.fui?" fui":"")+(j.pris?" pris":"")+
+      (j.id===suivant?" suivant":"");
+    var s=el("div",cls,jetonHTML(j,false,estSonTour,k+1,j.id===suivant));
     s.style.left=x+"px"; s.style.top=y+"px"; s.id="siege-"+k;
     z.appendChild(s);
   });
@@ -2102,6 +2223,15 @@ function ecranRevelation(){
     detail=ev.nom+" avait "+ev.avant+" points, il repart avec "+ev.apres+". "+
       ev.victime+" hérite du sien. Les cartes planquées, elles, ne bougent pas.";
     visuel='<div style="width:76px;height:76px;color:var(--rose)">'+EMBLEMES.troc+'</div>';
+  }else if(ev.type==="pickpocketPris"){
+    coul="var(--menthe)"; titre=ev.nom+" fouille "+ev.victime;
+    detail=(ev.pour===MOI?"Tu lui prends sa carte "+SPECIALES[ev.carte.k].nom+"."
+      :ev.nom+" repart avec une de ses cartes.");
+    visuel=htmlCarte(ev.carte,"xl");
+  }else if(ev.type==="pickpocketPrisCache"){
+    coul="var(--menthe)"; titre=ev.nom+" fouille "+ev.victime;
+    detail="Il lui prend une carte spéciale — impossible de savoir laquelle.";
+    visuel=htmlDos("xl");
   }else if(ev.type==="courtcircuit"){
     coul="var(--lagon)"; titre=ev.nom+" coupe une alarme";
     detail=ev.restantes===0?"Plus aucune alarme : le coffre est de nouveau silencieux."
@@ -2112,10 +2242,15 @@ function ecranRevelation(){
     detail="Les trois prochaines cartes sortiront dans l'ordre de son choix.";
     visuel='<div style="width:72px;height:72px;color:var(--jade)">'+EMBLEMES.espion+'</div>';
   }
+  var gardeLaMain=(ev.pour===MOI) &&
+    ["balance","sacperce","espion","troc","monteenlair","planque","courtcircuit","vole","pickpocketPris"]
+      .indexOf(ev.type)>=0;
   app.innerHTML='<div class="voile">'+
     '<div class="entree">'+visuel+'</div>'+
     '<div class="libelle" style="color:'+coul+'">'+titre+'</div>'+
-    '<div class="detail">'+detail+'</div>'+
+    '<div class="detail">'+detail+
+      (gardeLaMain?'<br><b style="color:var(--or-clair)">Tu gardes la main : à toi de piocher ou de fuir.</b>':'')+
+    '</div>'+
     (aMoi?'<button class="b-or" id="ok" style="margin-top:24px;min-width:220px">Continuer</button>'
          :'<div class="hint" style="margin-top:24px">En attente de '+E.joueurs[E.tour].nom+'…</div>')+
   '</div>';
@@ -2147,9 +2282,9 @@ function ecranVol(){
 
 /* ================= L'ESPION ================= */
 function ecranEspion(){
-  var ev=E.evenement, aMoi=(ev.pour===MOI), trois=ev.trois||[];
+  var ev=E.evenement, aMoi=(ev.pour===MOI), cartes=ev.cartes||[];
   if(!aMoi){
-    var combien=ev.combien||trois.length||3, dos="";
+    var combien=ev.combien||cartes.length||3, dos="";
     for(var d=0;d<combien;d++) dos+=htmlDos("md");
     app.innerHTML='<div class="voile"><div class="entree" style="width:64px;height:64px;color:var(--jade)">'+
       EMBLEMES.espion+'</div><div class="libelle" style="color:var(--jade)">L\'ESPION</div>'+
@@ -2157,45 +2292,38 @@ function ecranEspion(){
       '<div class="mainj" style="margin-top:18px">'+dos+'</div></div>';
     return;
   }
-  var ordre=trois.map(function(_,i){return i;});
-  var choisie=-1;        // position sélectionnée, -1 si aucune
-  var posees=[];         // positions qui viennent d'être échangées (pour l'animation)
-  var RANGS=["1ʳᵉ","2ᵉ","3ᵉ"];
+  var noms=ev.noms||[];
+  var ordre=cartes.map(function(_,i){return i;});
+  var choisie=-1, posees=[];
 
   function dessine(){
     var consigne = choisie<0
       ? "Tape une carte pour la sélectionner."
       : "Tape maintenant la carte avec laquelle l'échanger.";
-    app.innerHTML='<div class="voile"><div class="entree" style="width:56px;height:56px;color:var(--jade)">'+
-      EMBLEMES.espion+'</div><div class="libelle" style="color:var(--jade)">LES 3 PROCHAINES</div>'+
+    app.innerHTML='<div class="voile"><div class="entree" style="width:52px;height:52px;color:var(--jade)">'+
+      EMBLEMES.espion+'</div><div class="libelle" style="color:var(--jade)">LES '+cartes.length+' PROCHAINES</div>'+
       '<div class="consigne'+(choisie<0?"":" actif")+'">'+consigne+'</div>'+
       '<div class="choix" id="tr"></div>'+
-      '<div class="etiq" style="margin-top:14px">ordre de sortie, de gauche à droite</div>'+
-      '<button class="b-or" id="ok" style="margin-top:18px;min-width:220px">Valider cet ordre</button></div>';
+      '<div class="etiq" style="margin-top:14px;max-width:320px;line-height:1.5">'+
+        'chaque carte ira au joueur indiqué, si chacun pioche à son tour</div>'+
+      '<button class="b-or" id="ok" style="margin-top:16px;min-width:220px">Valider cet ordre</button></div>';
     var p=$("#tr");
     ordre.forEach(function(idx,pos){
-      var cls="case"+(pos===choisie?" choisie":"")+(posees.indexOf(pos)>=0?" pose":"");
-      var case_=el("div",cls);
-      var d=el("div"); d.innerHTML=htmlCarte(trois[idx],"lg");
+      var qui=noms[pos];
+      var moiIci=(qui && qui.id===MOI);
+      var case_=el("div","case"+(pos===choisie?" choisie":"")+(posees.indexOf(pos)>=0?" pose":"")+(moiIci?" pourmoi":""));
+      var d=el("div"); d.innerHTML=htmlCarte(cartes[idx], cartes.length>4?"md":"lg");
       case_.appendChild(d.firstElementChild);
-      case_.appendChild(el("div","rang",RANGS[pos]));
+      case_.appendChild(el("div","rang"+(moiIci?" moi":""), qui?(moiIci?"TOI":qui.nom):"—"));
       case_.onclick=function(){ toucher(pos); };
       p.appendChild(case_);
     });
-    posees=[];
     $("#ok").onclick=function(){ envoyer({t:"ordre", ordre:ordre}); };
   }
-
   function toucher(pos){
-    if(choisie<0){                      // première touche : on sélectionne
-      choisie=pos; sonSpeciale(); vibre(12);
-      dessine(); return;
-    }
-    if(choisie===pos){                  // même carte : on annule la sélection
-      choisie=-1; vibre(8);
-      dessine(); return;
-    }
-    var t=ordre[choisie];               // deuxième touche : on échange les deux
+    if(choisie<0){ choisie=pos; sonSpeciale(); vibre(12); dessine(); return; }
+    if(choisie===pos){ choisie=-1; vibre(8); dessine(); return; }
+    var t=ordre[choisie];
     ordre[choisie]=ordre[pos];
     ordre[pos]=t;
     posees=[choisie,pos];
@@ -2204,6 +2332,31 @@ function ecranEspion(){
     dessine();
   }
   dessine();
+}
+
+/* ================= LE PICKPOCKET ================= */
+function ecranPickpocket(){
+  var ev=E.evenement, aMoi=(ev.pour===MOI);
+  if(!aMoi){
+    var dos=""; for(var d=0;d<(ev.combien||1);d++) dos+=htmlDos("md");
+    app.innerHTML='<div class="voile"><div class="entree" style="width:64px;height:64px;color:var(--menthe)">'+
+      EMBLEMES.pickpocket+'</div><div class="libelle" style="color:var(--menthe)">LE PICKPOCKET</div>'+
+      '<div class="detail">'+ev.nom+' fouille la main de '+ev.victime+'…</div>'+
+      '<div class="mainj" style="margin-top:18px">'+dos+'</div></div>';
+    return;
+  }
+  var cartes=ev.cartes||[];
+  app.innerHTML='<div class="voile"><div class="entree" style="width:56px;height:56px;color:var(--menthe)">'+
+    EMBLEMES.pickpocket+'</div><div class="libelle" style="color:var(--menthe)">LA MAIN DE '+ev.victime.toUpperCase()+'</div>'+
+    '<div class="detail" style="margin:10px 0 16px">Tu es le seul à voir ses cartes. Prends celle que tu veux.</div>'+
+    '<div class="mainj" id="fouille"></div></div>';
+  var p=$("#fouille");
+  cartes.forEach(function(c,i){
+    var d=el("div"); d.innerHTML=htmlCarte(c,"lg");
+    var e=d.firstElementChild; e.className+=" jouable";
+    e.onclick=function(){ envoyer({t:"prendre", index:i}); };
+    p.appendChild(e);
+  });
 }
 
 /* ================= POLICE ================= */
