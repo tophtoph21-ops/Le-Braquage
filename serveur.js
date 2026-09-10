@@ -14,24 +14,95 @@ const FICHIER = path.join(__dirname, "le-braquage-multi.html");
 
 /* ---------- règles du jeu (identiques au jeu de cartes) ---------- */
 const QTES = {1:8,2:8,3:8,4:7,5:7,6:6,7:5,8:4,9:3,10:4};
-const SPECIALES = ["balance","complice","sacperce","espion","vol"];
+// combien d'exemplaires de chaque carte spéciale
+const SPECIALES = {
+  balance:3, sacperce:3, espion:3, vol:3,
+  monteenlair:3,     // gourmandise : deux pioches d'affilée
+  complice:2,        // rare : elle sauve tout un sac
+  planque:2,         // rare aussi : elle met du butin définitivement à l'abri
+  courtcircuit:2,    // rare : elle éteint une alarme
+  troc:2             // rare : elle échange deux sacs entiers
+};
+const NB_ALARMES = 9;
+/* objectifs proposés : partie courte, longue, ou soirée entière */
+const OBJECTIFS = [100, 300, 500];
+function objectifValide(v){ return OBJECTIFS.indexOf(v|0)>=0 ? (v|0) : 100; }
 const NOMS_SP = {
   balance:"BALANCE", complice:"COMPLICE", sacperce:"SAC PERCÉ",
-  espion:"L'ESPION", vol:"LE VOL"
+  espion:"L'ESPION", vol:"LE VOL", planque:"LA PLANQUE",
+  courtcircuit:"LE COURT-CIRCUIT", monteenlair:"MONTE-EN-L'AIR", troc:"LE TROC"
 };
 
 function melange(a){
   for(let i=a.length-1;i>0;i--){ const j=crypto.randomInt(i+1); [a[i],a[j]]=[a[j],a[i]]; }
   return a;
 }
-function neufPaquet(){
-  const d=[];
-  for(const v in QTES) for(let i=0;i<QTES[v];i++) d.push({t:"butin",v:+v});
-  for(let i=0;i<9;i++) d.push({t:"alarme"});
-  for(const k of SPECIALES) for(let i=0;i<3;i++) d.push({t:"sp",k});
-  return melange(d);
+/* Le début de manche doit rester respirable : pas d'alarme dans les 6 premières
+   cartes, et pas deux alarmes avant la 18e. On remélange tant que ce n'est pas le cas. */
+/* Les alarmes ne sont plus jetées au hasard : on leur réserve des emplacements
+   espacés. Fini les deux alarmes coup sur coup et les manches expédiées. */
+const DEBUT_SUR = 7;    // aucune alarme dans les 7 premières cartes
+const ECART_MIN = 6;    // au moins 6 cartes entre deux alarmes
+
+/* Seules les trois premières alarmes décident de la manche : c'est elles
+   qu'on place, chacune dans sa fenêtre, avec un écart garanti. */
+function entre(min,max){
+  if(max<min) max=min;
+  return min + crypto.randomInt(max-min+1);
 }
-const valeur = j => j.sac.reduce((s,c)=>s+c.v,0);
+/* Plus on est nombreux, plus chacun attend son tour : on allonge donc la manche
+   proportionnellement, sinon on ne joue que 4 cartes à dix joueurs. */
+function souffle(nbJoueurs){
+  return Math.max(1, Math.min(2.2, (nbJoueurs||4)/5));
+}
+function positionsAlarmes(taille, combien, f){
+  f = f || 1;
+  const prises=new Set();
+  const poser=(p)=>{                       // on pose sans jamais écraser une place déjà prise
+    let x=Math.max(0,Math.min(taille-1,p));
+    while(prises.has(x) && x<taille-1) x++;
+    while(prises.has(x) && x>0) x--;
+    prises.add(x);
+    return x;
+  };
+  const ecart=Math.round(ECART_MIN*f);
+  const a1=poser(entre(Math.round(DEBUT_SUR*f), Math.round(20*f)));
+  const a2=poser(entre(a1+ecart, Math.round(34*f)));
+  const a3=poser(entre(a2+ecart, Math.round(48*f)));
+  // les six suivantes ne servent que si la manche s'éternise : on les étale
+  let curseur=a3;
+  for(let i=3;i<combien;i++){
+    curseur+=ecart+crypto.randomInt(4);
+    curseur=poser(Math.min(curseur,taille-1));
+  }
+  return [...prises].sort((x,y)=>x-y);
+}
+
+function neufPaquet(nbJoueurs){
+  const f=souffle(nbJoueurs);
+  const reste=[];
+  // le butin grossit avec la table : de quoi alimenter les tours supplémentaires
+  for(const v in QTES){
+    const combien=Math.round(QTES[v]*f);
+    for(let i=0;i<combien;i++) reste.push({t:"butin",v:+v});
+  }
+  // les cartes spéciales suivent aussi, mais les rares restent rares
+  for(const k in SPECIALES){
+    const rare=(SPECIALES[k]<=2);
+    const combien=rare ? SPECIALES[k] : Math.round(SPECIALES[k]*f);
+    for(let i=0;i<combien;i++) reste.push({t:"sp",k});
+  }
+  melange(reste);
+  const taille = reste.length + NB_ALARMES;
+  const places = positionsAlarmes(taille, NB_ALARMES, f);
+  const marque = new Set(places);
+  const paquet=[]; let n=0;
+  for(let i=0;i<taille;i++) paquet.push(marque.has(i) ? {t:"alarme"} : reste[n++]);
+  return paquet;
+}
+// le sac (en jeu, saisissable) + la planque (déjà à l'abri, même de la police)
+const valeur = j => j.sac.reduce((s,c)=>s+c.v,0) + (j.planque||[]).reduce((s,c)=>s+c.v,0);
+const valeurSac = j => j.sac.reduce((s,c)=>s+c.v,0);
 
 /* ---------- salons ---------- */
 const salons = new Map();
@@ -76,6 +147,7 @@ function etatPublic(s, pourId){
     joueurs:s.joueurs.map(j=>({
       id:j.id, nom:j.nom, connecte:j.connecte, total:j.total,
       sac:j.sac,                                   // le butin reste posé sur la table
+      planque:j.planque||[],                       // butin déjà à l'abri, hors d'atteinte
       main:(j.id===pourId ? j.main : null),        // la main : secrète
       cartesEnMain:j.main.length,
       fui:j.fui, pris:j.pris, force:j.force
@@ -99,18 +171,22 @@ function tourSuivant(s){
 }
 
 function nouvelleManche(s, premier){
-  s.manche++; s.pioche=neufPaquet(); s.alarmes=0; s.premierFuyard=null;
+  s.manche++; s.pioche=neufPaquet(s.joueurs.length); s.alarmes=0; s.premierFuyard=null;
   s.evenement=null; s.apercu=null; s.classement=null;
-  s.joueurs.forEach(j=>{ j.sac=[]; j.main=[]; j.fui=false; j.pris=false; j.force=false; });
+  s.joueurs.forEach(j=>{ j.sac=[]; j.main=[]; j.planque=[]; j.fui=false; j.pris=false; j.force=false; j.rab=0; });
   s.tour = premier % s.joueurs.length;
   if(!s.joueurs[s.tour].connecte) tourSuivant(s);
   s.phase="tour";
 }
 
 function finManche(s){
-  s.joueurs.forEach(j=>{ if(!j.pris) j.total += valeur(j); });
+  s.joueurs.forEach(j=>{
+    const g = j.pris ? (j.planque||[]).reduce((x,c)=>x+c.v,0) : valeur(j);
+    j.gagneManche = g;
+    j.total += g;
+  });
   s.classement = s.joueurs.slice().sort((a,b)=>b.total-a.total)
-    .map(j=>({id:j.id, nom:j.nom, total:j.total, gagne:j.pris?0:valeur(j)}));
+    .map(j=>({id:j.id, nom:j.nom, total:j.total, gagne:j.gagneManche||0}));
   const max=s.classement[0].total;
   const exaequo=s.classement.filter(j=>j.total===max).length>1;
   s.phase = (max>=s.cible && !exaequo) ? "victoire" : "finManche";
@@ -122,7 +198,7 @@ function police(s){
   actifs(s).forEach(j=>{
     const i=j.main.findIndex(c=>c.k==="complice");
     if(i>=0){ j.main.splice(i,1); j.fui=true; sauves.push(j.nom); }
-    else { j.pris=true; j.sac=[]; pris.push(j.nom); }
+    else { j.pris=true; j.sac=[]; pris.push(j.nom); }   // la planque, elle, reste acquise
   });
   s.phase="police";
   s.evenement={type:"police", pris, sauves};
@@ -166,6 +242,11 @@ function piocher(s, joueur){
 function continuer(s, joueur){
   if(s.phase!=="revele" || joueurCourant(s)!==joueur) return;
   const suite=s.apercu; s.apercu=null;
+  if(!suite && joueur.rab>0 && !joueur.fui && !joueur.pris){
+    joueur.rab--;                              // Monte-en-l'air : il rejoue
+    s.phase="tour"; s.evenement=null;
+    return;
+  }
   if(suite==="police"){ return police(s); }
   if(suite==="vol"){
     const cibles=actifs(s).filter(x=>x!==joueur && x.sac.length);
@@ -231,6 +312,42 @@ function jouerSpeciale(s, joueur, m){
     s.evenement={type:"vole", carte:volee, nom:joueur.nom, victime:cible.nom, pour:joueur.id};
     return;
   }
+  if(c.k==="monteenlair"){
+    joueur.main.splice(idx,1);
+    joueur.rab=2;                              // il rejouera deux fois de suite
+    s.phase="revele"; s.apercu=null;
+    s.evenement={type:"monteenlair", nom:joueur.nom, pour:joueur.id};
+    return;
+  }
+  if(c.k==="troc"){
+    const autre=s.joueurs.find(x=>x.id===m.cible);
+    if(!autre || autre===joueur || autre.fui || autre.pris) return;
+    joueur.main.splice(idx,1);
+    const mien=valeur(joueur), sien=valeur(autre);
+    const t=joueur.sac; joueur.sac=autre.sac; autre.sac=t;   // la planque n'est pas échangée
+    s.phase="revele"; s.apercu=null;
+    s.evenement={type:"troc", nom:joueur.nom, victime:autre.nom, pour:joueur.id,
+                 avant:mien, apres:sien};
+    return;
+  }
+  if(c.k==="courtcircuit"){
+    if(s.alarmes<=0){ return; }              // rien à éteindre
+    joueur.main.splice(idx,1);
+    s.alarmes--;
+    s.phase="revele"; s.apercu=null;
+    s.evenement={type:"courtcircuit", nom:joueur.nom, pour:joueur.id, restantes:s.alarmes};
+    return;
+  }
+  if(c.k==="planque"){
+    if(!joueur.sac.length) return;
+    const i=Math.max(0, Math.min(m.carte|0, joueur.sac.length-1));
+    joueur.main.splice(idx,1);
+    const mise=joueur.sac.splice(i,1)[0];
+    joueur.planque.push(mise);
+    s.phase="revele"; s.apercu=null;
+    s.evenement={type:"planque", carte:mise, nom:joueur.nom, pour:joueur.id};
+    return;
+  }
   const cible=s.joueurs.find(x=>x.id===m.cible);
   if(!cible || cible===joueur || cible.fui || cible.pris) return;
   if(c.k==="balance"){
@@ -255,7 +372,7 @@ function jouerSpeciale(s, joueur, m){
    COMPLICES DU TÉLÉPHONE (parties solo)
    Ils jouent avec les mêmes règles, arbitrées ici.
    ========================================================= */
-const NOMS_BOTS=["Vito","Nina","Marlo","Suzie","Franck","Lola","Karim","Bébert"];
+const NOMS_BOTS=["Vito","Nina","Marlo","Suzie","Franck","Lola","Karim","Bébert","Gina"];
 
 function estBot(j){ return !!j.bot; }
 
@@ -269,9 +386,44 @@ function botDecideFuite(s,j){
   return v>=30 && Math.random()<0.40;
 }
 function botJoueSpeciale(s,j){
+  // un complice qui accumule finit par jouer : il ne garde jamais plus de deux cartes
+  const trop = j.main.filter(c=>c.k!=="complice").length >= 2;
+  // il inspecte la pioche dès la première alarme (les autres cas suivent)
+  const es=j.main.findIndex(c=>c.k==="espion");
+  if(es>=0 && (trop || (s.alarmes>=1 && Math.random()<0.6))){
+    jouerSpeciale(s,j,{index:es});
+    return true;
+  }
+  // éteindre une alarme quand ça chauffe vraiment
+  const cc=j.main.findIndex(c=>c.k==="courtcircuit");
+  if(cc>=0 && s.alarmes>=2){ jouerSpeciale(s,j,{index:cc}); return true; }
+  // planquer sa plus grosse carte quand le sac devient précieux
+  const pl=j.main.findIndex(c=>c.k==="planque");
+  if(pl>=0 && j.sac.length && (s.alarmes>=1 || valeurSac(j)>=12)){
+    let best=0; j.sac.forEach((c,n)=>{ if(c.v>j.sac[best].v) best=n; });
+    jouerSpeciale(s,j,{index:pl, carte:best});
+    return true;
+  }
+  // le Troc : quand le sac d'en face est nettement plus garni que le sien
+  const tr=j.main.findIndex(c=>c.k==="troc");
+  if(tr>=0){
+    const proies=actifs(s).filter(x=>x!==j && valeurSac(x)>=valeurSac(j)+9);
+    if(proies.length){
+      let cible=proies[0];
+      proies.forEach(x=>{ if(valeurSac(x)>valeurSac(cible)) cible=x; });
+      jouerSpeciale(s,j,{index:tr, cible:cible.id});
+      return true;
+    }
+  }
+  // le Monte-en-l'air : tant qu'il n'y a pas d'alarme, on double la mise
+  const ml=j.main.findIndex(c=>c.k==="monteenlair");
+  if(ml>=0 && (trop || (s.alarmes===0 && Math.random()<0.6))){
+    jouerSpeciale(s,j,{index:ml});
+    return true;
+  }
   // de temps en temps, un mauvais tour au joueur le mieux loti
   const i=j.main.findIndex(c=>c.k==="sacperce"||c.k==="balance");
-  if(i<0 || Math.random()>0.45) return false;
+  if(i<0 || (!trop && Math.random()>0.45)) return false;
   const c=j.main[i];
   const cibles=actifs(s).filter(x=>x!==j && (c.k!=="sacperce"||x.sac.length));
   if(!cibles.length) return false;
@@ -280,10 +432,33 @@ function botJoueSpeciale(s,j){
   jouerSpeciale(s,j,{index:i, cible:cible.id});
   return true;
 }
+
+/* Dernier filet : un complice qui a trop de cartes en joue une, quelle qu'elle soit.
+   Sans cela il peut en accumuler quatre faute de conditions idéales. */
+function botVideSaMain(s,j){
+  if(j.main.filter(c=>c.k!=="complice").length < 3) return false;
+  const autres=actifs(s).filter(x=>x!==j);
+  for(let i=0;i<j.main.length;i++){
+    const c=j.main[i];
+    if(c.k==="complice") continue;
+    if(c.k==="espion" || c.k==="monteenlair"){ jouerSpeciale(s,j,{index:i}); return true; }
+    if(c.k==="courtcircuit" && s.alarmes>=1){ jouerSpeciale(s,j,{index:i}); return true; }
+    if(c.k==="planque" && j.sac.length){ jouerSpeciale(s,j,{index:i, carte:0}); return true; }
+    if(c.k==="vol" || c.k==="sacperce"){
+      const proies=autres.filter(x=>x.sac.length);
+      if(proies.length){ jouerSpeciale(s,j,{index:i, cible:proies[0].id, carte:0}); return true; }
+    }
+    if((c.k==="balance"||c.k==="troc") && autres.length){
+      jouerSpeciale(s,j,{index:i, cible:autres[0].id}); return true;
+    }
+  }
+  return false;
+}
 function botAgit(s){
   const j=joueurCourant(s);
   if(!j || !estBot(j)) return;
   if(s.phase==="tour"){
+    if(botVideSaMain(s,j)) return;
     if(botJoueSpeciale(s,j)) return;         // la révélation enchaînera
     if(botDecideFuite(s,j)) fuir(s,j); else piocher(s,j);
     return;
@@ -407,7 +582,7 @@ serveur.on("upgrade",(req,socket)=>{
       const id=crypto.randomUUID();
       salon=nouveauSalon(id);
       moi={id, nom:(m.nom||"Joueur").slice(0,10), ws:socket, connecte:true,
-           total:0, sac:[], main:[], fui:false, pris:false, force:false};
+           total:0, sac:[], main:[], planque:[], fui:false, pris:false, force:false};
       salon.joueurs.push(moi);
       salons.set(salon.code,salon);
       repondre({t:"moi", id, code:salon.code});
@@ -418,14 +593,14 @@ serveur.on("upgrade",(req,socket)=>{
       const id=crypto.randomUUID();
       salon=nouveauSalon(id);
       salon.solo=true;
-      salon.cible=(m.cible===50?50:100);
+      salon.cible=objectifValide(m.cible);
       moi={id, nom:(m.nom||"Toi").slice(0,10), ws:socket, connecte:true,
-           total:0, sac:[], main:[], fui:false, pris:false, force:false};
+           total:0, sac:[], main:[], planque:[], fui:false, pris:false, force:false};
       salon.joueurs.push(moi);
-      const combien=Math.max(1,Math.min(7, m.bots|0 || 2));
+      const combien=Math.max(1,Math.min(9, m.bots|0 || 2));
       for(let i=0;i<combien;i++){
         salon.joueurs.push({id:"bot-"+i, nom:NOMS_BOTS[i], bot:true, ws:null, connecte:true,
-          total:0, sac:[], main:[], fui:false, pris:false, force:false});
+          total:0, sac:[], main:[], planque:[], fui:false, pris:false, force:false});
       }
       salons.set(salon.code,salon);
       repondre({t:"moi", id, code:salon.code});
@@ -440,11 +615,11 @@ serveur.on("upgrade",(req,socket)=>{
       const s=salons.get((m.code||"").toUpperCase().trim());
       if(!s) return repondre({t:"erreur", msg:"Aucune partie avec ce code."});
       if(s.phase!=="salon") return repondre({t:"erreur", msg:"Cette partie a déjà commencé."});
-      if(s.joueurs.length>=8) return repondre({t:"erreur", msg:"La table est complète (8 joueurs)."});
+      if(s.joueurs.length>=10) return repondre({t:"erreur", msg:"La table est complète (10 joueurs)."});
       const id=crypto.randomUUID();
       salon=s;
       moi={id, nom:(m.nom||"Joueur").slice(0,10), ws:socket, connecte:true,
-           total:0, sac:[], main:[], fui:false, pris:false, force:false};
+           total:0, sac:[], main:[], planque:[], fui:false, pris:false, force:false};
       salon.joueurs.push(moi);
       repondre({t:"moi", id, code:salon.code});
       return diffuser(salon);
@@ -455,7 +630,7 @@ serveur.on("upgrade",(req,socket)=>{
     switch(m.t){
       case "demarrer":
         if(moi.id!==salon.hote || salon.joueurs.length<2) return;
-        salon.cible = (m.cible===50?50:100);
+        salon.cible = objectifValide(m.cible);
         salon.manche=0;
         salon.joueurs.forEach(j=>j.total=0);
         nouvelleManche(salon,0);
