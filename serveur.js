@@ -118,7 +118,7 @@ function nouveauSalon(hoteId){
   return {
     code:codeLibre(), hote:hoteId, phase:"salon", cible:100,
     joueurs:[], pioche:[], alarmes:0, tour:0, manche:0,
-    solo:false, jetonBot:0,
+    solo:false, jetonBot:0, messages:[],
     premierFuyard:null, evenement:null, apercu:null, classement:null
   };
 }
@@ -143,9 +143,10 @@ function etatPublic(s, pourId){
     code:s.code, solo:!!s.solo, phase:s.phase, cible:s.cible, manche:s.manche,
     alarmes:s.alarmes, restantes:s.pioche.length, hote:s.hote,
     tour:s.tour, evenement:filtrerEvenement(s.evenement,pourId),
+    messages:s.messages||[],
     apercu:null, classement:s.classement,
     joueurs:s.joueurs.map(j=>({
-      id:j.id, nom:j.nom, connecte:j.connecte, total:j.total,
+      id:j.id, nom:j.nom, bot:!!j.bot, connecte:j.connecte, total:j.total,
       sac:j.sac,                                   // le butin reste posé sur la table
       planque:j.planque||[],                       // butin déjà à l'abri, hors d'atteinte
       main:(j.id===pourId ? j.main : null),        // la main : secrète
@@ -485,7 +486,7 @@ function botAgit(s){
 }
 /* on programme le coup suivant si c'est à un complice de jouer */
 function planifierBot(s){
-  if(!s.solo) return;
+  if(!s.joueurs.some(estBot)) return;   // solo comme multijoueur : dès qu'il y a un complice
   const j=joueurCourant(s);
   if(!j || !estBot(j)) return;
   if(["tour","revele","vol","espion"].indexOf(s.phase)<0) return;
@@ -629,6 +630,31 @@ serveur.on("upgrade",(req,socket)=>{
     if(!salon || !moi) return;
 
     switch(m.t){
+      case "ajouterBot": {
+        if(moi.id!==salon.hote || salon.phase!=="salon") return;
+        if(salon.joueurs.length>=10) return;
+        const pris=salon.joueurs.filter(j=>j.bot).map(j=>j.nom);
+        const libre=NOMS_BOTS.find(n=>pris.indexOf(n)<0);
+        if(!libre) return;
+        salon.joueurs.push({id:"bot-"+crypto.randomUUID().slice(0,8), nom:libre, bot:true,
+          ws:null, connecte:true, total:0, sac:[], main:[], planque:[],
+          fui:false, pris:false, force:false, rab:0});
+        break;
+      }
+      case "retirerBot": {
+        if(moi.id!==salon.hote || salon.phase!=="salon") return;
+        for(let i=salon.joueurs.length-1;i>=0;i--){
+          if(salon.joueurs[i].bot){ salon.joueurs.splice(i,1); break; }
+        }
+        break;
+      }
+      case "chat": {
+        const texte=String(m.texte||"").trim().slice(0,140);
+        if(!texte) return;
+        salon.messages.push({nom:moi.nom, id:moi.id, texte, t:Date.now()});
+        if(salon.messages.length>40) salon.messages.shift();
+        break;
+      }
       case "demarrer":
         if(moi.id!==salon.hote || salon.joueurs.length<2) return;
         salon.cible = objectifValide(m.cible);

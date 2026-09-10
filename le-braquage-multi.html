@@ -459,7 +459,31 @@ input[type=text]::placeholder{color:#5f6d87}
 .planque-lib{font-family:"Cinzel",Georgia,serif;font-size:9px;letter-spacing:.14em;
   text-transform:uppercase;color:var(--or-clair);margin-right:4px}
 
-/* ============ DIDACTICIEL ============ */
+/* ============ DISCUSSION ============ */
+#bulle{position:absolute;top:calc(env(safe-area-inset-top) + 2px);right:40px;z-index:6;
+  background:none;border:none;box-shadow:none;clip-path:none;padding:6px;opacity:.7;
+  display:flex;align-items:center}
+#bulle svg{width:18px;height:18px;display:block;color:var(--or)}
+#bulle .pastille-msg{position:absolute;top:1px;right:0;min-width:15px;height:15px;
+  border-radius:99px;background:var(--sang);color:#fff;font-size:9px;font-weight:800;
+  display:flex;align-items:center;justify-content:center;padding:0 4px;
+  box-shadow:0 0 0 2px var(--encre)}
+.chat{position:fixed;inset:0;z-index:55;display:flex;flex-direction:column;
+  background:radial-gradient(ellipse at 50% 30%,rgba(20,30,52,.98),rgba(3,5,10,.99) 70%);
+  padding:calc(env(safe-area-inset-top) + 10px) 12px calc(env(safe-area-inset-bottom) + 10px)}
+.chat-tete{display:flex;align-items:center;justify-content:space-between;margin-bottom:8px}
+.chat-liste{flex:1;overflow-y:auto;display:flex;flex-direction:column;gap:7px;padding:4px 0}
+.msg{max-width:82%;padding:8px 11px;font-size:13.5px;line-height:1.45;
+  background:rgba(255,255,255,.07);box-shadow:inset 0 0 0 1px rgba(227,192,92,.22);
+  clip-path:polygon(8px 0,100% 0,100% calc(100% - 8px),calc(100% - 8px) 100%,0 100%,0 8px)}
+.msg .qui{display:block;font-size:10px;letter-spacing:.1em;text-transform:uppercase;
+  color:var(--or-clair);margin-bottom:3px}
+.msg.moi{align-self:flex-end;background:rgba(227,192,92,.14);
+  box-shadow:inset 0 0 0 1px rgba(227,192,92,.5)}
+.chat-vide{text-align:center;color:var(--brume);font-size:12.5px;font-style:italic;margin:auto}
+.chat-bas{display:flex;gap:8px;align-items:center;margin-top:8px}
+.chat-bas input{flex:1}
+.chat-bas button{padding:13px 16px;flex:0 0 auto}
 .coach{position:relative;margin-top:8px;padding:12px 13px;
   background:linear-gradient(180deg,rgba(227,192,92,.16),rgba(227,192,92,.05));
   box-shadow:inset 0 0 0 1px var(--or),0 -6px 24px rgba(0,0,0,.5);
@@ -906,7 +930,7 @@ function nouveauSalon(hoteId){
   return {
     code:codeLibre(), hote:hoteId, phase:"salon", cible:100,
     joueurs:[], pioche:[], alarmes:0, tour:0, manche:0,
-    solo:false, jetonBot:0,
+    solo:false, jetonBot:0, messages:[],
     premierFuyard:null, evenement:null, apercu:null, classement:null
   };
 }
@@ -931,9 +955,10 @@ function etatPublic(s, pourId){
     code:s.code, solo:!!s.solo, phase:s.phase, cible:s.cible, manche:s.manche,
     alarmes:s.alarmes, restantes:s.pioche.length, hote:s.hote,
     tour:s.tour, evenement:filtrerEvenement(s.evenement,pourId),
+    messages:s.messages||[],
     apercu:null, classement:s.classement,
     joueurs:s.joueurs.map(j=>({
-      id:j.id, nom:j.nom, connecte:j.connecte, total:j.total,
+      id:j.id, nom:j.nom, bot:!!j.bot, connecte:j.connecte, total:j.total,
       sac:j.sac,                                   // le butin reste posé sur la table
       planque:j.planque||[],                       // butin déjà à l'abri, hors d'atteinte
       main:(j.id===pourId ? j.main : null),        // la main : secrète
@@ -1273,7 +1298,7 @@ function botAgit(s){
 }
 /* on programme le coup suivant si c'est à un complice de jouer */
 function planifierBot(s){
-  if(!s.solo) return;
+  if(!s.joueurs.some(estBot)) return;   // solo comme multijoueur : dès qu'il y a un complice
   const j=joueurCourant(s);
   if(!j || !estBot(j)) return;
   if(["tour","revele","vol","espion"].indexOf(s.phase)<0) return;
@@ -1408,6 +1433,75 @@ function confirmerSortie(){
   };
 }
 
+/* ================= DISCUSSION ENTRE JOUEURS ================= */
+var msgLus=0, chatOuvert=false;
+function boutonChat(){
+  if(!E || SOLO) return "";                       // inutile en solo
+  var total=(E.messages||[]).length;
+  var neufs=Math.max(0,total-msgLus);
+  return '<button id="bulle">'+
+    '<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" '+
+      'stroke-width="2" stroke-linecap="round" stroke-linejoin="round">'+
+      '<path d="M21 11.5a8.4 8.4 0 01-9 8.4 8.9 8.9 0 01-3.8-.8L3 21l1.9-5a8.4 8.4 0 01-.8-3.6 8.4 8.4 0 018.4-8.4 8.4 8.4 0 018.5 8z"/></svg>'+
+    (neufs?'<span class="pastille-msg">'+(neufs>9?"9+":neufs)+'</span>':'')+
+  '</button>';
+}
+function brancherChat(){
+  var b=$("#bulle");
+  if(b) b.onclick=ouvrirChat;
+}
+function ouvrirChat(){
+  chatOuvert=true;
+  msgLus=(E.messages||[]).length;
+  dessinerChat();
+}
+function dessinerChat(){
+  var messages=E.messages||[];
+  var liste = messages.length
+    ? messages.map(function(m){
+        return '<div class="msg'+(m.id===MOI?" moi":"")+'">'+
+          '<span class="qui">'+m.nom+'</span>'+echapper(m.texte)+'</div>';
+      }).join("")
+    : '<div class="chat-vide">Aucun message pour l\'instant.<br>Lance la conversation !</div>';
+  var voile=el("div","chat");
+  voile.id="fenetre-chat";
+  voile.innerHTML=
+    '<div class="chat-tete"><span class="titre" style="font-size:16px">DISCUSSION</span>'+
+      '<button class="b-sombre" id="fermer-chat" style="padding:9px 14px;font-size:13px">Fermer</button></div>'+
+    '<div class="filet"><i></i></div>'+
+    '<div class="chat-liste" id="chat-liste">'+liste+'</div>'+
+    '<div class="chat-bas">'+
+      '<input type="text" id="chat-txt" maxlength="140" placeholder="Ton message…">'+
+      '<button class="b-or" id="chat-envoi">Envoyer</button></div>';
+  document.body.appendChild(voile);
+  var l=$("#chat-liste"); if(l) l.scrollTop=l.scrollHeight;
+  $("#fermer-chat").onclick=fermerChat;
+  $("#chat-envoi").onclick=envoyerMessage;
+  var champ=$("#chat-txt");
+  if(champ){
+    champ.onkeydown=function(ev){ if(ev.key==="Enter") envoyerMessage(); };
+    try{ champ.focus(); }catch(e){}
+  }
+}
+function envoyerMessage(){
+  var champ=$("#chat-txt");
+  if(!champ) return;
+  var texte=(champ.value||"").trim();
+  if(!texte) return;
+  envoyer({t:"chat", texte:texte});
+  champ.value="";
+}
+function fermerChat(){
+  chatOuvert=false;
+  msgLus=(E.messages||[]).length;
+  var f=document.getElementById("fenetre-chat");
+  if(f && f.remove) f.remove();
+  dessiner();
+}
+function echapper(t){
+  return String(t).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;");
+}
+
 /* petit message fugace en bas de l'écran */
 function toast(txt,coul){
   var t=el("div",null,txt);
@@ -1437,6 +1531,7 @@ function ecranPanne(msg){
 
 /* on ne redessine que si quelque chose a changé */
 function recevoirEtat(etat){
+  var avantMsg=E?(E.messages||[]).length:0;
   var avant=E;
   E=etat;
   var signature=JSON.stringify([etat.phase,etat.tour,etat.manche,etat.alarmes,
@@ -1446,6 +1541,12 @@ function recevoirEtat(etat){
   DERNIER=signature;
   effetsDeLEvenement(avant,etat);
   dessiner();
+  apresDessin();
+  var apresMsg=(etat.messages||[]).length;
+  if(!chatOuvert && apresMsg>avantMsg && avantMsg>=0){
+    var dernier=etat.messages[apresMsg-1];
+    if(dernier && dernier.id!==MOI){ sonSpeciale(); vibre(12); }
+  }
 }
 function moiJoueur(){
   if(!E) return null;
@@ -1491,6 +1592,11 @@ function effetsDeLEvenement(avant,etat){
 /* ================= AIGUILLAGE DES ÉCRANS ================= */
 function dessiner(){
   if(!E) return ecranAccueil();
+  if(chatOuvert){                      // la discussion reste au premier plan
+    var f=document.getElementById("fenetre-chat");
+    if(f && f.remove) f.remove();
+    msgLus=(E.messages||[]).length;
+  }
   switch(E.phase){
     case "salon":     return ecranSalon();
     case "tour":      return ecranTable(true);
@@ -1501,6 +1607,9 @@ function dessiner(){
     case "finManche": return ecranFinManche();
     case "victoire":  return ecranVictoire();
   }
+}
+function apresDessin(){
+  if(chatOuvert && E && !SOLO) dessinerChat();
 }
 
 /* ================= ACCUEIL ================= */
@@ -1602,7 +1711,8 @@ function ecranSolo(){
 function ecranSalon(){
   var suisHote=(E.hote===MOI);
   app.innerHTML=
-    '<h1 class="titre" style="font-size:21px">LA BANDE SE RÉUNIT</h1>'+
+    boutonChat()+
+    '<h1 class="titre" style="font-size:21px;margin-top:12px">LA BANDE SE RÉUNIT</h1>'+
     '<div class="filet"><i></i></div>'+
     '<div class="panneau centre"><div class="etiq">Code de la partie</div>'+
       '<div class="chiffre" style="font-size:52px;letter-spacing:.24em;color:var(--or-clair);'+
@@ -1612,11 +1722,19 @@ function ecranSalon(){
       '<div class="etiq" style="margin-bottom:6px">'+E.joueurs.length+' braqueur'+(E.joueurs.length>1?"s":"")+' à la table</div>'+
       E.joueurs.map(function(j){
         return '<div class="ligne"><span>'+(j.id===E.hote?'<span style="color:var(--or)">◆ </span>':'')+j.nom+
-          (j.id===MOI?' <span class="tag">toi</span>':'')+'</span>'+
-          '<span class="etiq">'+(j.connecte?"en place":"déconnecté")+'</span></div>';
+          (j.id===MOI?' <span class="tag">toi</span>':'')+
+          (j.bot?' <span class="tag">complice</span>':'')+'</span>'+
+          '<span class="etiq">'+(j.bot?"prêt":(j.connecte?"en place":"déconnecté"))+'</span></div>';
       }).join("")+
     '</div>'+
     (suisHote?
+      '<div class="panneau"><div class="centre etiq">Compléter avec des complices</div>'+
+        '<div class="compteur" style="margin-top:10px">'+
+          '<button class="b-sombre" id="moins-bot">−</button>'+
+          '<div class="n" id="nb-bots">'+E.joueurs.filter(function(j){return j.bot;}).length+'</div>'+
+          '<button class="b-sombre" id="plus-bot">+</button></div>'+
+        '<div class="hint" style="margin-top:8px">Des joueurs tenus par le téléphone, '+
+        'pour compléter la table quand vous n\'êtes pas assez nombreux.</div></div>'+
       '<div class="panneau"><div class="centre etiq">Objectif</div>'+
         '<div class="rangee" style="margin-top:9px">'+
         OBJECTIFS.map(function(v){
@@ -1632,8 +1750,11 @@ function ecranSalon(){
       b.onclick=function(){ E.cible=parseInt(b.dataset.c,10); ecranSalon(); };
     });
     $("#lancer").onclick=function(){ sonPorte(); envoyer({t:"demarrer", cible:E.cible}); };
+    $("#plus-bot").onclick=function(){ envoyer({t:"ajouterBot"}); };
+    $("#moins-bot").onclick=function(){ envoyer({t:"retirerBot"}); };
   }
   $("#quitter").onclick=function(){ quitterPartie(); };
+  brancherChat();
 }
 
 /* ================= LA TABLE ================= */
@@ -1648,6 +1769,7 @@ function ecranTable(){
 
   app.innerHTML=
     boutonSortir()+
+    boutonChat()+
     '<button id="son">'+iconeSon()+'</button>'+
     '<div class="ligne" style="padding:11px 0 2px;gap:8px">'+
       '<span class="etiq" style="letter-spacing:.08em;white-space:nowrap">M'+E.manche+(E.solo?"":" · "+E.code)+'</span>'+
@@ -1673,6 +1795,7 @@ function ecranTable(){
   habillerPorte();
   $("#son").onclick=function(){ sonOn=!sonOn; $("#son").innerHTML=iconeSon(); };
   brancherSortir();
+  brancherChat();
   if(aMoi){
     $("#piocher").onclick=function(){ envoyer({t:"piocher"}); };
     $("#fuir").onclick=function(){ envoyer({t:"fuir"}); };
