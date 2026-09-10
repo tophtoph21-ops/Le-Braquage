@@ -540,6 +540,7 @@ function lireTrames(tampon, surMessage, ws){
 
 /* ---------- serveur HTTP + jeu ---------- */
 const STATIQUES={
+  "/sw.js":["sw.js","text/javascript"],
   "/manifest.webmanifest":["manifest.webmanifest","application/manifest+json"],
   "/icone-192.png":["icone-192.png","image/png"],
   "/icone-512.png":["icone-512.png","image/png"],

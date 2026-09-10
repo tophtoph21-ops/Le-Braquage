@@ -2481,6 +2481,13 @@ window.addEventListener("resize",function(){
     ajusterCoffre();
   }
 });
+/* installation de l'application : mise en cache pour l'usage hors connexion */
+if("serviceWorker" in navigator && location.protocol!=="file:"){
+  window.addEventListener("load",function(){
+    navigator.serviceWorker.register("/sw.js").catch(function(){});
+  });
+}
+
 ecranAccueil();
 
 </script>

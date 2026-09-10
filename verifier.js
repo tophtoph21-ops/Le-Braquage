@@ -18,7 +18,7 @@ const codeSansLancement=js.replace(/\necranAccueil\(\);\s*$/,"");
 /* ---------- 1. fichiers ---------- */
 titre("1. Fichiers du dépôt");
 ["serveur.js","le-braquage-multi.html","package.json","manifest.webmanifest",
- "icone-192.png","icone-512.png","README.md","construire.py"].forEach(f=>{
+ "icone-192.png","icone-512.png","README.md","construire.py","sw.js"].forEach(f=>{
   fs.existsSync(path.join(ici,f)) ? ok(f) : ko("manquant : "+f);
 });
 
@@ -211,6 +211,22 @@ const tailles={};
 [3,6,10].forEach(n=>{ const x=salon(n); tailles[n]=x.pioche.length; });
 tailles[10]>tailles[3] ? ok("paquet adapté à la table ("+tailles[3]+" à 3 joueurs, "+tailles[10]+" à 10)")
   : ko("le paquet ne s'adapte pas");
+
+/* ---------- 8bis. installation ---------- */
+titre("8bis. Installation de l'application");
+try{
+  const man=JSON.parse(fs.readFileSync(path.join(ici,"manifest.webmanifest"),"utf8"));
+  ["name","short_name","start_url","display","icons","theme_color"].every(c=>man[c])
+    ? ok("manifeste complet") : ko("manifeste incomplet");
+  man.icons.length>=2 ? ok(man.icons.length+" icônes déclarées") : ko("icônes manquantes");
+  const sw=fs.readFileSync(path.join(ici,"sw.js"),"utf8");
+  new Function(sw.replace(/self\./g,"({}).")); ok("service de cache : syntaxe");
+  sw.includes("caches.open") && sw.includes("addEventListener(\"fetch\"")
+    ? ok("cache et interception en place") : ko("service de cache incomplet");
+  js.includes("serviceWorker.register") ? ok("la page enregistre le service") : ko("service non enregistré");
+  const srv=fs.readFileSync(path.join(ici,"serveur.js"),"utf8");
+  srv.includes('"/sw.js"') ? ok("le serveur sert le service") : ko("le serveur ne sert pas /sw.js");
+}catch(e){ ko("installation : "+e.message); }
 
 /* ---------- 9. moteur embarqué = moteur du serveur ---------- */
 titre("9. Cohérence des règles");
