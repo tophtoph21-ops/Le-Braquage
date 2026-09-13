@@ -48,7 +48,8 @@ body{
     repeating-linear-gradient(60deg,rgba(227,192,92,.16) 0 1px,transparent 1px 26px),
     repeating-linear-gradient(-60deg,rgba(227,192,92,.16) 0 1px,transparent 1px 26px)}
 #app{position:relative;z-index:1;height:100%;display:flex;flex-direction:column;
-  padding:calc(env(safe-area-inset-top) + 8px) 11px calc(env(safe-area-inset-bottom) + 10px)}
+  padding:calc(env(safe-area-inset-top) + 8px) 11px calc(env(safe-area-inset-bottom) + 10px);
+  opacity:0;transition:opacity .55s ease}
 
 /* ---------- typo & filets ---------- */
 .titre{font-family:"Cinzel",Georgia,serif;font-weight:700;letter-spacing:.2em;text-align:center;
@@ -524,11 +525,57 @@ button.guide{box-shadow:0 5px 0 #6b530f,0 0 0 3px var(--or-clair),0 14px 26px rg
 .fiche+.fiche{border-top:1px solid rgba(227,192,92,.16)}
 .fiche-txt{flex:1}
 .fiche-txt p{margin:4px 0 0;font-size:12.5px;line-height:1.5;color:#b7c2d8}
-@media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
+@media
+/* ================= INTRO HAESSY GAMES ================= */
+#intro-haessy{position:fixed;inset:0;z-index:50;display:flex;align-items:center;justify-content:center;
+  background:
+    radial-gradient(circle at 50% 18%,rgba(227,192,92,.18),transparent 32%),
+    radial-gradient(circle at 50% 82%,rgba(74,126,214,.16),transparent 34%),
+    linear-gradient(180deg,#04070f 0%,#081120 52%,#05070d 100%);
+  overflow:hidden}
+#intro-haessy::before,#intro-haessy::after{content:"";position:absolute;inset:-10%;pointer-events:none;opacity:.45}
+#intro-haessy::before{background:
+  repeating-linear-gradient(60deg,rgba(227,192,92,.08) 0 1px,transparent 1px 26px),
+  repeating-linear-gradient(-60deg,rgba(227,192,92,.08) 0 1px,transparent 1px 26px);
+  animation:deriveIntro 18s linear infinite}
+#intro-haessy::after{background:radial-gradient(circle,rgba(255,255,255,.8) 0 1px,transparent 1px 100%);
+  background-size:120px 120px;mix-blend-mode:screen;opacity:.13;animation:scintilleIntro 7s ease-in-out infinite}
+#intro-haessy.out{animation:introDisparition .65s ease forwards}
+ introDisparition{0%{opacity:1}100%{opacity:0;visibility:hidden}}
+ deriveIntro{0%{transform:translate3d(0,0,0)}100%{transform:translate3d(22px,14px,0)}}
+ scintilleIntro{0%,100%{opacity:.10}50%{opacity:.18}}
+.intro-wrap{position:relative;z-index:1;width:min(92vw,420px);display:flex;flex-direction:column;align-items:center;
+  gap:14px;padding:calc(env(safe-area-inset-top) + 18px) 18px calc(env(safe-area-inset-bottom) + 24px);text-align:center}
+.intro-badge{padding:6px 12px;border-radius:999px;border:1px solid rgba(227,192,92,.35);
+  background:rgba(255,255,255,.04);color:var(--or-clair);font-size:11px;letter-spacing:.22em;text-transform:uppercase}
+.intro-logo-frame{width:min(68vw,210px);padding:8px;border-radius:26px;background:linear-gradient(180deg,rgba(255,255,255,.08),rgba(255,255,255,.02));
+  box-shadow:0 0 0 1px rgba(227,192,92,.26),0 18px 40px rgba(0,0,0,.48),0 0 40px rgba(227,192,92,.10)}
+.intro-logo-frame img{display:block;width:100%;height:auto;filter:drop-shadow(0 0 18px rgba(227,192,92,.22))}
+.intro-video-shell{width:min(86vw,360px);padding:7px;border-radius:24px;
+  background:linear-gradient(145deg,rgba(227,192,92,.88),rgba(138,109,24,.88));
+  box-shadow:0 0 0 1px rgba(255,243,196,.3),0 16px 40px rgba(0,0,0,.55),0 0 36px rgba(227,192,92,.15)}
+#intro-video{display:block;width:100%;height:auto;border-radius:18px;background:#02040a;box-shadow:inset 0 0 0 1px rgba(255,255,255,.05)}
+.intro-titre{font-family:"Cinzel",Georgia,serif;font-size:clamp(26px,8vw,42px);font-weight:700;letter-spacing:.18em;
+  text-transform:uppercase;color:var(--or-clair);text-shadow:0 0 24px rgba(227,192,92,.38),0 1px 0 #000}
+.intro-sous{max-width:320px;font-size:12px;line-height:1.6;letter-spacing:.14em;text-transform:uppercase;color:#b7c2d8}
+ (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
 
 </style>
 </head>
 <body>
+<div id="intro-haessy" aria-label="Introduction Haessy Games">
+  <div class="intro-wrap">
+    <div class="intro-badge deco">Haessy Games</div>
+    <div class="intro-logo-frame"><img src="./haessy-games-logo.png" alt="Logo Haessy Games"></div>
+    <div class="intro-video-shell">
+      <video id="intro-video" muted playsinline preload="auto" poster="./haessy-games-logo.png">
+        <source src="./haessy-games-intro.mp4" type="video/mp4">
+      </video>
+    </div>
+    <div class="intro-titre">Haessy Games</div>
+    <div class="intro-sous">Présente · Le Braquage</div>
+  </div>
+</div>
 <div id="fond"></div>
 <div id="app"></div>
 <script>
@@ -536,6 +583,36 @@ button.guide{box-shadow:0 5px 0 #6b530f,0 0 0 3px var(--or-clair),0 14px 26px rg
 var app=document.getElementById("app");
 function $(s){return document.querySelector(s);}
 function el(t,c,h){var e=document.createElement(t);if(c)e.className=c;if(h!==undefined)e.innerHTML=h;return e;}
+function finirIntro(){
+  if(finirIntro._ok) return;
+  finirIntro._ok=true;
+  var intro=$("#intro-haessy"), video=$("#intro-video");
+  if(video){ try{ video.pause(); }catch(e){} }
+  app.style.opacity="1";
+  if(intro){
+    intro.classList.add("out");
+    setTimeout(function(){ if(intro && intro.parentNode) intro.parentNode.removeChild(intro); },700);
+  }
+}
+function lancerIntro(){
+  var intro=$("#intro-haessy"), video=$("#intro-video");
+  if(!intro){ app.style.opacity="1"; return; }
+  var secoursDeclenche=false;
+  function secours(){
+    if(secoursDeclenche || finirIntro._ok) return;
+    secoursDeclenche=true;
+    setTimeout(finirIntro,2300);
+  }
+  if(!video){ secours(); return; }
+  video.addEventListener("ended",finirIntro,{once:true});
+  video.addEventListener("error",secours,{once:true});
+  setTimeout(function(){
+    if(!finirIntro._ok && (video.readyState < 2 || video.paused && video.currentTime===0)) secours();
+  },1200);
+  var lecture=video.play();
+  if(lecture && typeof lecture.catch==="function") lecture.catch(secours);
+  setTimeout(function(){ if(!finirIntro._ok) finirIntro(); },9000);
+}
 
 /* ================= SON ================= */
 var AC=null, sonOn=true;
@@ -1667,6 +1744,7 @@ function quitterPartie(){
   if(SOCK){ try{ SOCK.close(); }catch(e){} SOCK=null; }
   E=null; DERNIER=null; DERNIER_CHAT=null; msgNonLus=0; chatOuvert=false; chatBrouillon="";
   ecranAccueil();
+lancerIntro();
 }
 function ecranPanne(msg){
   app.innerHTML=
@@ -2848,6 +2926,7 @@ if("serviceWorker" in navigator && location.protocol!=="file:"){
 }
 
 ecranAccueil();
+lancerIntro();
 
 </script>
 </body>
