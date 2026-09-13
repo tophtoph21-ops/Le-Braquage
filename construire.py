@@ -26,7 +26,18 @@ moteur = """/* ===========================================================
    Généré par construire.py : ne pas modifier à la main.
    =========================================================== */
 var MOTEUR=(function(){
-  var crypto={ randomInt:function(n){ return Math.floor(Math.random()*n); } };
+  var crypto={ randomInt:function(n){
+    if(n<=1) return 0;
+    try{
+      if(window.crypto && window.crypto.getRandomValues){
+        var max=0x100000000, limite=max-(max%n), x;
+        var tab=new Uint32Array(1);
+        do{ window.crypto.getRandomValues(tab); x=tab[0]; }while(x>=limite);
+        return x%n;
+      }
+    }catch(e){}
+    return Math.floor(Math.random()*n);
+  } };
   var salons=new Map();                // une seule table : la partie en cours
   function envoyer(){}                 // pas de réseau ici
 

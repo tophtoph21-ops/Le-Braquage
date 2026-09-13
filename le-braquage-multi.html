@@ -838,7 +838,18 @@ function iconeSon(){
    Généré par construire.py : ne pas modifier à la main.
    =========================================================== */
 var MOTEUR=(function(){
-  var crypto={ randomInt:function(n){ return Math.floor(Math.random()*n); } };
+  var crypto={ randomInt:function(n){
+    if(n<=1) return 0;
+    try{
+      if(window.crypto && window.crypto.getRandomValues){
+        var max=0x100000000, limite=max-(max%n), x;
+        var tab=new Uint32Array(1);
+        do{ window.crypto.getRandomValues(tab); x=tab[0]; }while(x>=limite);
+        return x%n;
+      }
+    }catch(e){}
+    return Math.floor(Math.random()*n);
+  } };
   var salons=new Map();                // une seule table : la partie en cours
   function envoyer(){}                 // pas de réseau ici
 
@@ -935,6 +946,22 @@ function neufPaquet(nbJoueurs, cible){
   for(let i=0;i<taille;i++) paquet.push(marque.has(i) ? {t:"alarme"} : reste[n++]);
   return paquet;
 }
+/* Chaque manche reçoit un paquet entièrement neuf. On mémorise seulement
+   l'ouverture précédente pour éviter, même par hasard, de redonner exactement
+   la même suite visible au début de deux manches consécutives. */
+function signatureOuverture(paquet){
+  return paquet.slice(0,12).map(c=>c.t==="butin" ? "b"+c.v : c.t==="sp" ? "s"+c.k : "a").join("|");
+}
+function paquetNouvelleManche(s){
+  let paquet, signature, essais=0;
+  do{
+    paquet=neufPaquet(s.joueurs.length, s.cible);
+    signature=signatureOuverture(paquet);
+    essais++;
+  }while(s.derniereOuverture && signature===s.derniereOuverture && essais<8);
+  s.derniereOuverture=signature;
+  return paquet;
+}
 // le sac (en jeu, saisissable) + la planque (déjà à l'abri, même de la police)
 const valeur = j => j.sac.reduce((s,c)=>s+c.v,0) + (j.planque||[]).reduce((s,c)=>s+c.v,0);
 const valeurSac = j => j.sac.reduce((s,c)=>s+c.v,0);
@@ -953,7 +980,7 @@ function nouveauSalon(hoteId){
   return {
     code:codeLibre(), hote:hoteId, phase:"salon", cible:100,
     joueurs:[], pioche:[], alarmes:0, tour:0, manche:0,
-    solo:false, jetonBot:0, messages:[],
+    solo:false, jetonBot:0, messages:[], derniereOuverture:null,
     premierFuyard:null, evenement:null, apercu:null, classement:null
   };
 }
@@ -1025,7 +1052,7 @@ function tourSuivant(s){
 }
 
 function nouvelleManche(s, premier){
-  s.manche++; s.pioche=neufPaquet(s.joueurs.length, s.cible); s.alarmes=0; s.premierFuyard=null;
+  s.manche++; s.pioche=paquetNouvelleManche(s); s.alarmes=0; s.premierFuyard=null;
   s.evenement=null; s.apercu=null; s.classement=null;
   s.joueurs.forEach(j=>{ j.sac=[]; j.main=[]; j.planque=[]; j.fui=false; j.pris=false; j.force=false; j.rab=0; j.reprise=false; });
   s.tour = premier % s.joueurs.length;
@@ -1138,9 +1165,9 @@ function ordreEspion(s, joueur, m){
   const tete=s.pioche.slice(0,n);
   const ordre=(m.ordre||[]).map(i=>i|0).filter(i=>i>=0 && i<n);
   const uniques=[...new Set(ordre)];
-  if(uniques.length===n){
-    s.pioche = uniques.map(i=>tete[i]).concat(s.pioche.slice(n));
-  }
+  if(uniques.length!==n) return;              // ordre incomplet : on ne valide pas
+  s.pioche = uniques.map(i=>tete[i]).concat(s.pioche.slice(n));
+  joueur.reprise=true;                        // l'Espion garde réellement la main
   s.phase="revele"; s.apercu=null;
   s.evenement={type:"espion", nom:joueur.nom, pour:joueur.id};
 }
@@ -1383,7 +1410,7 @@ function botAgit(s){
   }
   if(s.phase==="espion"){
     // il place la meilleure carte en premier, l'alarme en dernier
-    const n=Math.min(3,s.pioche.length);
+    const n=Math.min((s.evenement && s.evenement.cartes || []).length || 3, s.pioche.length);
     const note=c=>c.t==="alarme"?-100:(c.t==="butin"?c.v:6);
     const ordre=Array.from({length:n},(_,i)=>i).sort((a,b)=>note(s.pioche[b])-note(s.pioche[a]));
     ordreEspion(s,j,{ordre});
@@ -1463,7 +1490,7 @@ function planifierBot(s){
 })();
 
 /* ================= LIAISON AVEC LE SERVEUR ================= */
-var SOCK=null, MOI=null, CODE=null, E=null, DERNIER=null, monNom="";
+var SOCK=null, MOI=null, CODE=null, E=null, DERNIER=null, DERNIER_CHAT=null, monNom="";
 var NOMS_BOTS=["Vito","Nina","Marlo","Suzie","Franck","Lola","Karim","Bébert","Gina"];
 var SOLO=false;      // true : la partie tourne entièrement dans le téléphone
 var OBJECTIFS=[100,300,500];
@@ -1476,6 +1503,9 @@ var reconnexion=null;
 
 function connecter(surOuverture){
   var url=(location.protocol==="https:"?"wss://":"ws://")+location.host;
+  // Dans l'application Android (Capacitor), la page tourne sur localhost :
+  // le multijoueur doit alors rejoindre le serveur public Render.
+  if(location.hostname==="localhost") url="wss://le-braquage.onrender.com";
   try{ SOCK=new WebSocket(url); }
   catch(e){ ecranPanne("Impossible de joindre le serveur."); return; }
   SOCK.onopen=function(){ if(surOuverture) surOuverture(); };
@@ -1528,11 +1558,10 @@ function confirmerSortie(){
 }
 
 /* ================= DISCUSSION ENTRE JOUEURS ================= */
-var msgLus=0, chatOuvert=false;
+var msgNonLus=0, chatOuvert=false, chatBrouillon="";
 function boutonChat(){
   if(!E || SOLO) return "";                       // inutile en solo
-  var total=(E.messages||[]).length;
-  var neufs=Math.max(0,total-msgLus);
+  var neufs=msgNonLus;
   return '<button id="bulle">'+
     '<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" '+
       'stroke-width="2" stroke-linecap="round" stroke-linejoin="round">'+
@@ -1544,26 +1573,50 @@ function brancherChat(){
   var b=$("#bulle");
   if(b) b.onclick=ouvrirChat;
 }
+function htmlMessagesChat(messages){
+  return messages.length
+    ? messages.map(function(m){
+        return '<div class="msg'+(m.id===MOI?" moi":"")+'">'+
+          '<span class="qui">'+echapper(m.nom)+'</span>'+echapper(m.texte)+'</div>';
+      }).join("")
+    : '<div class="chat-vide">Aucun message pour l\'instant.<br>Lance la conversation !</div>';
+}
+function actualiserPastilleChat(){
+  var b=$("#bulle");
+  if(!b) return;
+  var p=b.querySelector(".pastille-msg");
+  if(msgNonLus>0){
+    if(!p){ p=el("span","pastille-msg"); b.appendChild(p); }
+    p.textContent=msgNonLus>9?"9+":String(msgNonLus);
+  }else if(p && p.remove) p.remove();
+}
+function actualiserChatSeulement(){
+  if(!E) return;
+  var l=$("#chat-liste");
+  if(l){
+    l.innerHTML=htmlMessagesChat(E.messages||[]);
+    l.scrollTop=l.scrollHeight;
+  }
+  msgNonLus=0;
+  actualiserPastilleChat();
+}
 function ouvrirChat(){
   chatOuvert=true;
-  msgLus=(E.messages||[]).length;
+  msgNonLus=0;
+  actualiserPastilleChat();
   dessinerChat();
 }
 function dessinerChat(){
+  var ancien=document.getElementById("fenetre-chat");
+  if(ancien && ancien.remove) ancien.remove();
   var messages=E.messages||[];
-  var liste = messages.length
-    ? messages.map(function(m){
-        return '<div class="msg'+(m.id===MOI?" moi":"")+'">'+
-          '<span class="qui">'+m.nom+'</span>'+echapper(m.texte)+'</div>';
-      }).join("")
-    : '<div class="chat-vide">Aucun message pour l\'instant.<br>Lance la conversation !</div>';
   var voile=el("div","chat");
   voile.id="fenetre-chat";
   voile.innerHTML=
     '<div class="chat-tete"><span class="titre" style="font-size:16px">DISCUSSION</span>'+
       '<button class="b-sombre" id="fermer-chat" style="padding:9px 14px;font-size:13px">Fermer</button></div>'+
     '<div class="filet"><i></i></div>'+
-    '<div class="chat-liste" id="chat-liste">'+liste+'</div>'+
+    '<div class="chat-liste" id="chat-liste">'+htmlMessagesChat(messages)+'</div>'+
     '<div class="chat-bas">'+
       '<input type="text" id="chat-txt" maxlength="140" placeholder="Ton message…">'+
       '<button class="b-or" id="chat-envoi">Envoyer</button></div>';
@@ -1573,6 +1626,8 @@ function dessinerChat(){
   $("#chat-envoi").onclick=envoyerMessage;
   var champ=$("#chat-txt");
   if(champ){
+    champ.value=chatBrouillon;
+    champ.oninput=function(){ chatBrouillon=champ.value; };
     champ.onkeydown=function(ev){ if(ev.key==="Enter") envoyerMessage(); };
     try{ champ.focus(); }catch(e){}
   }
@@ -1583,11 +1638,11 @@ function envoyerMessage(){
   var texte=(champ.value||"").trim();
   if(!texte) return;
   envoyer({t:"chat", texte:texte});
+  chatBrouillon="";
   champ.value="";
 }
 function fermerChat(){
   chatOuvert=false;
-  msgLus=(E.messages||[]).length;
   var f=document.getElementById("fenetre-chat");
   if(f && f.remove) f.remove();
   dessiner();
@@ -1610,7 +1665,7 @@ function toast(txt,coul){
 function quitterPartie(){
   if(SOLO){ MOTEUR.arreter(); SOLO=false; }
   if(SOCK){ try{ SOCK.close(); }catch(e){} SOCK=null; }
-  E=null; DERNIER=null;
+  E=null; DERNIER=null; DERNIER_CHAT=null; msgNonLus=0; chatOuvert=false; chatBrouillon="";
   ecranAccueil();
 }
 function ecranPanne(msg){
@@ -1624,22 +1679,50 @@ function ecranPanne(msg){
 }
 
 /* on ne redessine que si quelque chose a changé */
+function cleDernierMessage(messages){
+  var m=messages && messages.length ? messages[messages.length-1] : null;
+  return m ? [messages.length,m.t||0,m.id||"",m.texte||""] : [0];
+}
 function recevoirEtat(etat){
-  var avantMsg=E?(E.messages||[]).length:0;
   var avant=E;
-  E=etat;
+  var anciensMessages=avant?(avant.messages||[]):[];
+  var nouveauxMessages=etat.messages||[];
+  var ancienneCle=JSON.stringify(cleDernierMessage(anciensMessages));
+  var nouvelleCle=JSON.stringify(cleDernierMessage(nouveauxMessages));
   var signature=JSON.stringify([etat.phase,etat.tour,etat.manche,etat.alarmes,
     etat.restantes,etat.joueurs.map(function(j){return [j.nom,j.total,j.sac.length,j.cartesEnMain,j.fui,j.pris,j.connecte];}),
     etat.evenement]);
-  if(signature===DERNIER) return;
+  var signatureChat=nouvelleCle;
+  var jeuChange=(signature!==DERNIER);
+  var chatChange=(signatureChat!==DERNIER_CHAT);
+  var dernier=nouveauxMessages.length?nouveauxMessages[nouveauxMessages.length-1]:null;
+  var nouveauMessage=chatChange && dernier && ancienneCle!==nouvelleCle;
+
+  E=etat;
+  if(!jeuChange && !chatChange) return;
+  DERNIER_CHAT=signatureChat;
+
+  // Un message seul ne doit pas reconstruire tout l'écran : sinon le clavier saute
+  // et le texte en cours de saisie disparaît sur téléphone.
+  if(!jeuChange){
+    if(chatOuvert) actualiserChatSeulement();
+    else actualiserPastilleChat();
+    if(!chatOuvert && nouveauMessage && dernier.id!==MOI){
+      msgNonLus++;
+      actualiserPastilleChat();
+      sonSpeciale(); vibre(12);
+    }
+    return;
+  }
+
   DERNIER=signature;
   effetsDeLEvenement(avant,etat);
   dessiner();
   apresDessin();
-  var apresMsg=(etat.messages||[]).length;
-  if(!chatOuvert && apresMsg>avantMsg && avantMsg>=0){
-    var dernier=etat.messages[apresMsg-1];
-    if(dernier && dernier.id!==MOI){ sonSpeciale(); vibre(12); }
+  if(!chatOuvert && nouveauMessage && dernier.id!==MOI){
+    msgNonLus++;
+    actualiserPastilleChat();
+    sonSpeciale(); vibre(12);
   }
 }
 function moiJoueur(){
@@ -1689,7 +1772,7 @@ function dessiner(){
   if(chatOuvert){                      // la discussion reste au premier plan
     var f=document.getElementById("fenetre-chat");
     if(f && f.remove) f.remove();
-    msgLus=(E.messages||[]).length;
+    msgNonLus=0;
   }
   switch(E.phase){
     case "salon":     return ecranSalon();
@@ -1796,7 +1879,7 @@ function ecranSolo(){
     monNom=($("#nom").value||"").trim()||"Toi";
     sonPorte();
     if(SOCK){ try{ SOCK.close(); }catch(e){} SOCK=null; }
-    SOLO=true; E=null; DERNIER=null;
+    SOLO=true; E=null; DERNIER=null; DERNIER_CHAT=null; msgNonLus=0; chatOuvert=false; chatBrouillon="";
     MOI=MOTEUR.MOI;                                    // connu avant le 1er affichage
     MOTEUR.demarrer(monNom, soloCfg.bots, soloCfg.cible, recevoirEtat);
   };

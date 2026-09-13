@@ -105,6 +105,22 @@ function neufPaquet(nbJoueurs, cible){
   for(let i=0;i<taille;i++) paquet.push(marque.has(i) ? {t:"alarme"} : reste[n++]);
   return paquet;
 }
+/* Chaque manche reçoit un paquet entièrement neuf. On mémorise seulement
+   l'ouverture précédente pour éviter, même par hasard, de redonner exactement
+   la même suite visible au début de deux manches consécutives. */
+function signatureOuverture(paquet){
+  return paquet.slice(0,12).map(c=>c.t==="butin" ? "b"+c.v : c.t==="sp" ? "s"+c.k : "a").join("|");
+}
+function paquetNouvelleManche(s){
+  let paquet, signature, essais=0;
+  do{
+    paquet=neufPaquet(s.joueurs.length, s.cible);
+    signature=signatureOuverture(paquet);
+    essais++;
+  }while(s.derniereOuverture && signature===s.derniereOuverture && essais<8);
+  s.derniereOuverture=signature;
+  return paquet;
+}
 // le sac (en jeu, saisissable) + la planque (déjà à l'abri, même de la police)
 const valeur = j => j.sac.reduce((s,c)=>s+c.v,0) + (j.planque||[]).reduce((s,c)=>s+c.v,0);
 const valeurSac = j => j.sac.reduce((s,c)=>s+c.v,0);
@@ -123,7 +139,7 @@ function nouveauSalon(hoteId){
   return {
     code:codeLibre(), hote:hoteId, phase:"salon", cible:100,
     joueurs:[], pioche:[], alarmes:0, tour:0, manche:0,
-    solo:false, jetonBot:0, messages:[],
+    solo:false, jetonBot:0, messages:[], derniereOuverture:null,
     premierFuyard:null, evenement:null, apercu:null, classement:null
   };
 }
@@ -195,7 +211,7 @@ function tourSuivant(s){
 }
 
 function nouvelleManche(s, premier){
-  s.manche++; s.pioche=neufPaquet(s.joueurs.length, s.cible); s.alarmes=0; s.premierFuyard=null;
+  s.manche++; s.pioche=paquetNouvelleManche(s); s.alarmes=0; s.premierFuyard=null;
   s.evenement=null; s.apercu=null; s.classement=null;
   s.joueurs.forEach(j=>{ j.sac=[]; j.main=[]; j.planque=[]; j.fui=false; j.pris=false; j.force=false; j.rab=0; j.reprise=false; });
   s.tour = premier % s.joueurs.length;
@@ -308,9 +324,9 @@ function ordreEspion(s, joueur, m){
   const tete=s.pioche.slice(0,n);
   const ordre=(m.ordre||[]).map(i=>i|0).filter(i=>i>=0 && i<n);
   const uniques=[...new Set(ordre)];
-  if(uniques.length===n){
-    s.pioche = uniques.map(i=>tete[i]).concat(s.pioche.slice(n));
-  }
+  if(uniques.length!==n) return;              // ordre incomplet : on ne valide pas
+  s.pioche = uniques.map(i=>tete[i]).concat(s.pioche.slice(n));
+  joueur.reprise=true;                        // l'Espion garde réellement la main
   s.phase="revele"; s.apercu=null;
   s.evenement={type:"espion", nom:joueur.nom, pour:joueur.id};
 }
@@ -553,7 +569,7 @@ function botAgit(s){
   }
   if(s.phase==="espion"){
     // il place la meilleure carte en premier, l'alarme en dernier
-    const n=Math.min(3,s.pioche.length);
+    const n=Math.min((s.evenement && s.evenement.cartes || []).length || 3, s.pioche.length);
     const note=c=>c.t==="alarme"?-100:(c.t==="butin"?c.v:6);
     const ordre=Array.from({length:n},(_,i)=>i).sort((a,b)=>note(s.pioche[b])-note(s.pioche[a]));
     ordreEspion(s,j,{ordre});
