@@ -709,11 +709,11 @@ serveur.on("upgrade",(req,socket)=>{
     if(m.t==="creer"){
       const id=crypto.randomUUID();
       salon=nouveauSalon(id);
-      moi={id, nom:(m.nom||"Joueur").slice(0,10), ws:socket, connecte:true,
+      moi={id, jeton:crypto.randomUUID(), nom:(m.nom||"Joueur").slice(0,10), ws:socket, connecte:true,
            total:0, sac:[], main:[], planque:[], fui:false, pris:false, force:false};
       salon.joueurs.push(moi);
       salons.set(salon.code,salon);
-      repondre({t:"moi", id, code:salon.code});
+      repondre({t:"moi", id, code:salon.code, jeton:moi.jeton});
       return diffuser(salon);
     }
 
@@ -722,7 +722,7 @@ serveur.on("upgrade",(req,socket)=>{
       salon=nouveauSalon(id);
       salon.solo=true;
       salon.cible=objectifValide(m.cible);
-      moi={id, nom:(m.nom||"Toi").slice(0,10), ws:socket, connecte:true,
+      moi={id, jeton:crypto.randomUUID(), nom:(m.nom||"Toi").slice(0,10), ws:socket, connecte:true,
            total:0, sac:[], main:[], planque:[], fui:false, pris:false, force:false};
       salon.joueurs.push(moi);
       const combien=Math.max(1,Math.min(9, m.bots|0 || 2));
@@ -731,9 +731,31 @@ serveur.on("upgrade",(req,socket)=>{
           total:0, sac:[], main:[], planque:[], fui:false, pris:false, force:false});
       }
       salons.set(salon.code,salon);
-      repondre({t:"moi", id, code:salon.code});
+      repondre({t:"moi", id, code:salon.code, jeton:moi.jeton});
       salon.manche=0;
       nouvelleManche(salon,0);
+      diffuser(salon);
+      planifierBot(salon);
+      return;
+    }
+
+
+    /* Reprise d'une session après mise en arrière-plan / changement d'application.
+       Le jeton privé empêche un autre téléphone de prendre la place du joueur. */
+    if(m.t==="reprendre"){
+      const s=salons.get((m.code||"").toUpperCase().trim());
+      if(!s) return repondre({t:"erreur", reprise:true, msg:"Cette partie n'existe plus."});
+      const j=s.joueurs.find(x=>!x.bot && x.id===m.id && x.jeton && x.jeton===m.jeton);
+      if(!j) return repondre({t:"erreur", reprise:true, msg:"Impossible de reprendre cette place."});
+
+      salon=s; moi=j;
+      if(moi._retraitTimer){ clearTimeout(moi._retraitTimer); moi._retraitTimer=null; }
+      if(moi._tourTimer){ clearTimeout(moi._tourTimer); moi._tourTimer=null; }
+      if(salon._videTimer){ clearTimeout(salon._videTimer); salon._videTimer=null; }
+      if(moi.ws && moi.ws!==socket){ try{ moi.ws.destroy(); }catch(e){} }
+      moi.ws=socket;
+      moi.connecte=true;
+      repondre({t:"moi", id:moi.id, code:salon.code, jeton:moi.jeton, reprise:true});
       diffuser(salon);
       planifierBot(salon);
       return;
@@ -746,14 +768,37 @@ serveur.on("upgrade",(req,socket)=>{
       if(s.joueurs.length>=10) return repondre({t:"erreur", msg:"La table est complète (10 joueurs)."});
       const id=crypto.randomUUID();
       salon=s;
-      moi={id, nom:(m.nom||"Joueur").slice(0,10), ws:socket, connecte:true,
+      moi={id, jeton:crypto.randomUUID(), nom:(m.nom||"Joueur").slice(0,10), ws:socket, connecte:true,
            total:0, sac:[], main:[], planque:[], fui:false, pris:false, force:false};
       salon.joueurs.push(moi);
-      repondre({t:"moi", id, code:salon.code});
+      repondre({t:"moi", id, code:salon.code, jeton:moi.jeton});
       return diffuser(salon);
     }
 
     if(!salon || !moi) return;
+
+    if(m.t==="quitter"){
+      const s=salon, j=moi;
+      j.jeton=null;
+      j.connecte=false;
+      j.ws=null;
+      if(j._retraitTimer){ clearTimeout(j._retraitTimer); j._retraitTimer=null; }
+      if(j._tourTimer){ clearTimeout(j._tourTimer); j._tourTimer=null; }
+      if(s.phase==="salon"){
+        s.joueurs=s.joueurs.filter(x=>x!==j);
+        if(s.hote===j.id && s.joueurs.length){
+          const prochain=s.joueurs.find(x=>!x.bot && x.connecte) || s.joueurs.find(x=>!x.bot) || s.joueurs[0];
+          if(prochain) s.hote=prochain.id;
+        }
+      }else if(s.phase==="tour" && joueurCourant(s)===j){
+        tourSuivant(s);
+      }
+      const humainConnecte=s.joueurs.some(x=>!x.bot && x.connecte);
+      if(!humainConnecte) salons.delete(s.code);
+      else { diffuser(s); planifierBot(s); }
+      salon=null; moi=null;
+      return;
+    }
 
     switch(m.t){
       case "ajouterBot": {
@@ -821,16 +866,61 @@ serveur.on("upgrade",(req,socket)=>{
     parti=true;
     try{ socket.destroy(); }catch(e){}
     if(!salon || !moi) return;
-    moi.connecte=false; moi.ws=null;
+    /* Si une nouvelle socket a déjà repris la place, la fermeture de l'ancienne
+       ne doit surtout pas déconnecter le joueur à nouveau. */
+    if(moi.ws!==socket) return;
+
+    moi.connecte=false;
+    moi.ws=null;
+
+    /* Au salon, on garde la place deux minutes : largement assez pour passer
+       sur Snap/WhatsApp, copier le code puis revenir. */
     if(salon.phase==="salon"){
-      salon.joueurs=salon.joueurs.filter(j=>j!==moi);
-      if(salon.hote===moi.id && salon.joueurs.length) salon.hote=salon.joueurs[0].id;
-    }else if(joueurCourant(salon)===moi && salon.phase==="tour"){
-      tourSuivant(salon);           // on ne bloque pas la table sur un joueur parti
+      if(moi._retraitTimer) clearTimeout(moi._retraitTimer);
+      const s=salon, j=moi;
+      moi._retraitTimer=setTimeout(()=>{
+        j._retraitTimer=null;
+        if(j.connecte || s.phase!=="salon") return;
+        s.joueurs=s.joueurs.filter(x=>x!==j);
+        if(s.hote===j.id && s.joueurs.length){
+          const prochain=s.joueurs.find(x=>!x.bot && x.connecte) || s.joueurs.find(x=>!x.bot) || s.joueurs[0];
+          if(prochain) s.hote=prochain.id;
+        }
+        if(!s.joueurs.some(x=>!x.bot && x.connecte) && !s.joueurs.some(x=>!x.bot)){
+          salons.delete(s.code);
+        }else{
+          diffuser(s);
+        }
+      },120000);
     }
-    if(salon.solo){ salons.delete(salon.code); return; }
-    if(!salon.joueurs.some(j=>j.connecte)) salons.delete(salon.code);
-    else diffuser(salon);
+
+    /* En pleine manche, on laisse 20 s au joueur pour revenir avant de
+       passer son tour. Sa place et son score restent conservés. */
+    if(salon.phase==="tour" && joueurCourant(salon)===moi){
+      if(moi._tourTimer) clearTimeout(moi._tourTimer);
+      const s=salon, j=moi;
+      moi._tourTimer=setTimeout(()=>{
+        j._tourTimer=null;
+        if(j.connecte || s.phase!=="tour" || joueurCourant(s)!==j) return;
+        tourSuivant(s);
+        diffuser(s);
+        planifierBot(s);
+      },20000);
+    }
+
+    /* Si tout le monde ferme l'application, le salon reste récupérable
+       pendant cinq minutes, puis il est nettoyé du serveur. */
+    const humainConnecte=salon.joueurs.some(j=>!j.bot && j.connecte);
+    if(!humainConnecte){
+      if(salon._videTimer) clearTimeout(salon._videTimer);
+      const s=salon;
+      salon._videTimer=setTimeout(()=>{
+        s._videTimer=null;
+        if(!s.joueurs.some(j=>!j.bot && j.connecte)) salons.delete(s.code);
+      },300000);
+    }
+
+    diffuser(salon);
   };
   // sur une socket reprise par « upgrade », Node émet « end » mais pas toujours « close »
   socket.on("end",partir);

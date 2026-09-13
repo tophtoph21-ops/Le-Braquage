@@ -557,10 +557,10 @@ function finirIntro(){
   finirIntro._ok=true;
   var intro=$("#intro-haessy"), video=$("#intro-video");
   if(video){ try{ video.pause(); }catch(e){} }
-  /* L'accueil n'est créé qu'une fois la vidéo terminée. */
-  ecranAccueil();
+  /* Une session multijoueur interrompue est reprise avant d'afficher le menu. */
   app.style.pointerEvents="auto";
   app.style.opacity="1";
+  if(!reprendreSessionSauvee()){ ecranAccueil(); }
   if(intro){
     intro.classList.add("out");
     setTimeout(function(){ if(intro.parentNode) intro.parentNode.removeChild(intro); },420);
@@ -1577,6 +1577,8 @@ function planifierBot(s){
 
 /* ================= LIAISON AVEC LE SERVEUR ================= */
 var SOCK=null, MOI=null, CODE=null, E=null, DERNIER=null, DERNIER_CHAT=null, monNom="";
+var JETON_REPRISE=null, reconnexion=null, reconnexionEnCours=false, fermetureVolontaire=false;
+var CLE_REPRISE="le-braquage-session-v2";
 var NOMS_BOTS=["Vito","Nina","Marlo","Suzie","Franck","Lola","Karim","Bébert","Gina"];
 var SOLO=false;      // true : la partie tourne entièrement dans le téléphone
 var OBJECTIFS=[100,300,500];
@@ -1585,27 +1587,112 @@ function dureeObjectif(v){
   if(v===300) return "Partie longue : comptez une bonne heure.";
   return "Le casse du siècle : prévoyez la soirée.";
 }
-var reconnexion=null;
-
-function connecter(surOuverture){
+function urlServeur(){
   var url=(location.protocol==="https:"?"wss://":"ws://")+location.host;
-  // Dans l'application Android (Capacitor), la page tourne sur localhost :
-  // le multijoueur doit alors rejoindre le serveur public Render.
   if(location.hostname==="localhost") url="wss://le-braquage.onrender.com";
-  try{ SOCK=new WebSocket(url); }
+  return url;
+}
+function lireSessionReprise(){
+  try{
+    var brut=localStorage.getItem(CLE_REPRISE);
+    if(!brut) return null;
+    var s=JSON.parse(brut);
+    if(!s || !s.id || !s.code || !s.jeton) return null;
+    return s;
+  }catch(e){ return null; }
+}
+function sauverSessionReprise(){
+  if(SOLO || !MOI || !CODE || !JETON_REPRISE) return;
+  try{ localStorage.setItem(CLE_REPRISE,JSON.stringify({id:MOI,code:CODE,jeton:JETON_REPRISE,nom:monNom||""})); }catch(e){}
+}
+function oublierSessionReprise(){
+  JETON_REPRISE=null;
+  try{ localStorage.removeItem(CLE_REPRISE); }catch(e){}
+}
+function traiterMessageSocket(ev,estReprise){
+  var m; try{ m=JSON.parse(ev.data); }catch(e){ return; }
+  if(m.t==="moi"){
+    MOI=m.id; CODE=m.code;
+    if(m.jeton){ JETON_REPRISE=m.jeton; sauverSessionReprise(); }
+    return;
+  }
+  if(m.t==="erreur"){
+    if(m.reprise || estReprise){
+      oublierSessionReprise();
+      E=null; DERNIER=null; DERNIER_CHAT=null;
+      toast(m.msg||"La partie n'est plus disponible.","var(--sang)");
+      ecranAccueil();
+      return;
+    }
+    toast(m.msg,"var(--sang)"); ecranAccueil(); return;
+  }
+  if(m.t==="etat"){ recevoirEtat(m.etat); }
+}
+function brancherSocket(ws,surOuverture,estReprise){
+  SOCK=ws;
+  ws.onopen=function(){
+    reconnexionEnCours=false;
+    if(reconnexion){ clearTimeout(reconnexion); reconnexion=null; }
+    if(estReprise){
+      var s=lireSessionReprise();
+      if(!s){ try{ ws.close(); }catch(e){} return; }
+      monNom=s.nom||monNom;
+      ws.send(JSON.stringify({t:"reprendre",code:s.code,id:s.id,jeton:s.jeton}));
+    }else if(surOuverture){
+      surOuverture();
+    }
+  };
+  ws.onmessage=function(ev){ traiterMessageSocket(ev,estReprise); };
+  ws.onclose=function(){
+    if(SOCK===ws) SOCK=null;
+    reconnexionEnCours=false;
+    if(SOLO || fermetureVolontaire) return;
+    if(lireSessionReprise()){
+      planifierReconnexion();
+      return;
+    }
+    if(E && E.phase!=="salon") ecranPanne("Connexion perdue.");
+  };
+  ws.onerror=function(){};
+}
+function connecter(surOuverture){
+  fermetureVolontaire=false;
+  var ws;
+  try{ ws=new WebSocket(urlServeur()); }
   catch(e){ ecranPanne("Impossible de joindre le serveur."); return; }
-  SOCK.onopen=function(){ if(surOuverture) surOuverture(); };
-  SOCK.onmessage=function(ev){
-    var m; try{ m=JSON.parse(ev.data); }catch(e){ return; }
-    if(m.t==="moi"){ MOI=m.id; CODE=m.code; return; }
-    if(m.t==="erreur"){ toast(m.msg,"var(--sang)"); ecranAccueil(); return; }
-    if(m.t==="etat"){ recevoirEtat(m.etat); }
-  };
-  SOCK.onclose=function(){
-    if(SOLO) return;                                   // le solo ne dépend d'aucune connexion
-    if(E && E.phase!=="salon"){ ecranPanne("Connexion perdue."); }
-  };
-  SOCK.onerror=function(){};
+  brancherSocket(ws,surOuverture,false);
+}
+function connecterReprise(){
+  if(SOLO) return false;
+  var s=lireSessionReprise();
+  if(!s) return false;
+  if(SOCK && (SOCK.readyState===0 || SOCK.readyState===1)) return true;
+  if(reconnexionEnCours) return true;
+  reconnexionEnCours=true; fermetureVolontaire=false;
+  var ws;
+  try{ ws=new WebSocket(urlServeur()); }
+  catch(e){ reconnexionEnCours=false; planifierReconnexion(); return true; }
+  brancherSocket(ws,null,true);
+  return true;
+}
+function planifierReconnexion(){
+  if(SOLO || fermetureVolontaire || !lireSessionReprise()) return;
+  if(reconnexion) clearTimeout(reconnexion);
+  reconnexion=setTimeout(function(){ reconnexion=null; connecterReprise(); },650);
+}
+function reprendreSessionSauvee(){
+  var s=lireSessionReprise();
+  if(!s) return false;
+  monNom=s.nom||monNom;
+  app.innerHTML='<div class="spacer"></div><h1 class="titre" style="font-size:22px">RECONNEXION AU CASSE…</h1>'+
+    '<div class="hint" style="margin-top:12px">Ta place est conservée.</div><div class="spacer"></div>';
+  connecterReprise();
+  return true;
+}
+function assurerConnexion(){
+  if(SOLO || fermetureVolontaire) return;
+  if(document.visibilityState && document.visibilityState!=="visible") return;
+  if(lireSessionReprise() && (!SOCK || SOCK.readyState>1)) connecterReprise();
 }
 function envoyer(o){
   if(SOLO){ MOTEUR.action(o); return; }              // aucune connexion nécessaire
@@ -1750,7 +1837,13 @@ function toast(txt,coul){
 }
 function quitterPartie(){
   if(SOLO){ MOTEUR.arreter(); SOLO=false; }
-  if(SOCK){ try{ SOCK.close(); }catch(e){} SOCK=null; }
+  fermetureVolontaire=true;
+  if(SOCK && SOCK.readyState===1){
+    try{ SOCK.send(JSON.stringify({t:"quitter"})); }catch(e){}
+  }
+  oublierSessionReprise();
+  var ancienne=SOCK; SOCK=null;
+  if(ancienne){ setTimeout(function(){ try{ ancienne.close(); }catch(e){} },80); }
   E=null; DERNIER=null; DERNIER_CHAT=null; msgNonLus=0; chatOuvert=false; chatBrouillon="";
   ecranAccueil();
 }
@@ -1918,6 +2011,8 @@ function ecranNom(mode){
   $("#back").onclick=ecranAccueil;
   $("#go").onclick=function(){
     monNom=($("#nom").value||"").trim()||"Braqueur";
+    oublierSessionReprise();
+    fermetureVolontaire=false;
     var envoi=function(){
       if(mode==="creer") envoyer({t:"creer", nom:monNom});
       else{
@@ -1965,6 +2060,8 @@ function ecranSolo(){
   $("#go").onclick=function(){
     monNom=($("#nom").value||"").trim()||"Toi";
     sonPorte();
+    fermetureVolontaire=true;
+    oublierSessionReprise();
     if(SOCK){ try{ SOCK.close(); }catch(e){} SOCK=null; }
     SOLO=true; E=null; DERNIER=null; DERNIER_CHAT=null; msgNonLus=0; chatOuvert=false; chatBrouillon="";
     MOI=MOTEUR.MOI;                                    // connu avant le 1er affichage
@@ -2955,6 +3052,18 @@ function ecranRegles(){
     '<button class="b-or" id="retour" style="margin-top:10px">Retour</button>';
   $("#retour").onclick=function(){ E?dessiner():ecranAccueil(); };
 }
+
+
+/* Android peut suspendre le WebSocket dès qu'on passe sur Snap, Messages, etc.
+   Au retour dans l'application, on reprend automatiquement la même place. */
+if(document.addEventListener){
+  document.addEventListener("visibilitychange",function(){
+    if(document.visibilityState==="visible") assurerConnexion();
+  });
+}
+window.addEventListener("focus",assurerConnexion);
+window.addEventListener("pageshow",assurerConnexion);
+window.addEventListener("online",assurerConnexion);
 
 window.addEventListener("resize",function(){
   if(E&&(E.phase==="tour")&&$("#sieges")){
