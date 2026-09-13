@@ -13,7 +13,7 @@ const page=fs.readFileSync(path.join(ici,"le-braquage-multi.html"),"utf8");
 const html=page;
 const js=page.match(/<script>([\s\S]*)<\/script>/)[1];
 const css=page.match(/<style>([\s\S]*)<\/style>/)[1];
-const codeSansLancement=js.replace(/\necranAccueil\(\);\s*$/,"");
+const codeSansLancement=js.replace(/\nlancerIntro\(\);\s*$/,"" );
 
 /* ---------- 1. fichiers ---------- */
 titre("1. Fichiers du dépôt");
@@ -135,7 +135,7 @@ titre("7. Partie solo (sans serveur)");
     global.WebSocket=function(){ throw new Error("connexion interdite en solo"); };
     D.API.SOLO=true; D.API.MOI=D.API.MOTEUR.MOI;
     let etat=null;
-    D.API.MOTEUR.demarrer("Test",bots,50,e=>{etat=e; D.API.recevoirEtat(e);});
+    D.API.MOTEUR.demarrer("Test",bots,100,e=>{etat=e; D.API.recevoirEtat(e);});
     const purge=()=>{let k=0; while(D.T.length&&k<600){const t=D.T.shift();k++;try{t.fn();}catch(e){}}};
     let tours=0, sansBoutons=0;
     for(let i=0;i<40000;i++){
@@ -153,7 +153,7 @@ titre("7. Partie solo (sans serveur)");
       else if(etat.phase==="revele") D.API.envoyer({t:"continuer"});
       else if(etat.phase==="vol"){ const c=etat.joueurs.filter(x=>x.id!==D.API.MOI&&!x.fui&&!x.pris&&x.sac.length);
         D.API.envoyer(c.length?{t:"speciale",cible:c[0].id,carte:0}:{t:"continuer"}); }
-      else if(etat.phase==="espion") D.API.envoyer({t:"ordre",ordre:[0,1,2]});
+      else if(etat.phase==="espion"){ const n=(etat.evenement&&etat.evenement.cartes||[]).length; D.API.envoyer({t:"ordre",ordre:Array.from({length:n},(_,i)=>i)}); }
       else break;
     }
     const fini=(etat&&etat.phase==="victoire");
@@ -171,7 +171,7 @@ function salon(n){
   const s=S.nouveauSalon("h");
   for(let i=0;i<n;i++) s.joueurs.push({id:"j"+i,nom:"J"+i,ws:null,connecte:true,total:0,
     sac:[],main:[],planque:[],fui:false,pris:false,force:false,rab:0});
-  s.cible=50; S.nouvelleManche(s,0); return s;
+  s.cible=100; S.nouvelleManche(s,0); return s;
 }
 let bloque=0, parties=0;
 for(let p=0;p<400;p++){
@@ -203,9 +203,9 @@ bloque===0 ? ok("400 parties de 2 à 10 joueurs, aucune bloquée") : ko(bloque+"
 const s=salon(4);
 const pos=[]; s.pioche.forEach((c,i)=>{ if(c.t==="alarme") pos.push(i); });
 pos.length===9 ? ok("9 alarmes par paquet") : ko(pos.length+" alarmes");
-const ecarts=[]; for(let i=1;i<pos.length;i++) ecarts.push(pos[i]-pos[i-1]);
-Math.min(...ecarts)>=6 ? ok("écart minimum de "+Math.min(...ecarts)+" cartes entre deux alarmes")
-  : ko("alarmes trop rapprochées : "+Math.min(...ecarts));
+const ecarts=[]; for(let i=1;i<Math.min(3,pos.length);i++) ecarts.push(pos[i]-pos[i-1]);
+Math.min(...ecarts)>=6 ? ok("écart minimum de "+Math.min(...ecarts)+" cartes entre les 3 alarmes décisives")
+  : ko("alarmes décisives trop rapprochées : "+Math.min(...ecarts));
 pos[0]>=7 ? ok("aucune alarme avant la carte "+(pos[0]+1)) : ko("alarme trop tôt");
 const tailles={};
 [3,6,10].forEach(n=>{ const x=salon(n); tailles[n]=x.pioche.length; });

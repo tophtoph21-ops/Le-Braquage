@@ -16,14 +16,15 @@ const FICHIER = path.join(__dirname, "le-braquage-multi.html");
 const QTES = {1:8,2:8,3:8,4:7,5:7,6:6,7:5,8:4,9:3,10:4};
 // combien d'exemplaires de chaque carte spéciale
 const SPECIALES = {
-  balance:3, sacperce:3, espion:3, vol:3,
-  monteenlair:3,     // gourmandise : deux pioches d'affilée
-  pickpocket:2,      // fouiller la main d'un adversaire et lui prendre une carte
-  complice:1,        // la plus rare de toutes : elle sauve un sac entier de la police
-  planque:2,         // rare aussi : elle met du butin définitivement à l'abri
-  courtcircuit:2,    // rare : elle éteint une alarme
-  troc:2             // rare : elle échange deux sacs entiers
+  balance:2, sacperce:2, espion:2, vol:2,
+  monteenlair:2,     // cartes d'action courantes, mais moins envahissantes
+  pickpocket:2,      // demandé : exactement deux Pickpocket par manche
+  complice:1,        // très rare : sauve un sac entier de la police
+  planque:1,         // rare : met du butin définitivement à l'abri
+  courtcircuit:1,    // rare : éteint une alarme
+  troc:1             // rare : échange deux sacs entiers
 };
+const SPECIALES_ADAPTABLES = new Set(["balance","sacperce","espion","vol","monteenlair"]);
 const NB_ALARMES = 9;
 /* objectifs proposés : partie courte, longue, ou soirée entière */
 const OBJECTIFS = [100, 300, 500];
@@ -91,10 +92,11 @@ function neufPaquet(nbJoueurs, cible){
     const combien=Math.round(QTES[v]*f);
     for(let i=0;i<combien;i++) reste.push({t:"butin",v:+v});
   }
-  // les cartes spéciales suivent aussi, mais les rares restent rares
+  // Moins de cartes avantage : seules les actions courantes augmentent légèrement
+  // sur les très grandes tables. Pickpocket reste TOUJOURS à 2 par manche.
   for(const k in SPECIALES){
-    const rare=(SPECIALES[k]<=2);
-    const combien=rare ? SPECIALES[k] : Math.round(SPECIALES[k]*f);
+    let combien=SPECIALES[k];
+    if(SPECIALES_ADAPTABLES.has(k)) combien=Math.max(2,Math.round(SPECIALES[k]*(0.65+0.35*f)));
     for(let i=0;i<combien;i++) reste.push({t:"sp",k});
   }
   melange(reste);
@@ -127,6 +129,7 @@ const valeurSac = j => j.sac.reduce((s,c)=>s+c.v,0);
 
 /* ---------- salons ---------- */
 const salons = new Map();
+
 function codeLibre(){
   const L="ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
   let c;
@@ -154,6 +157,9 @@ function filtrerEvenement(ev, pourId){
     return {type:"specialeCachee", nom:ev.nom, pour:ev.pour};
   }
   // les 3 cartes de l'Espion ne sont vues que par lui
+  if(ev.type==="pickpocketCibles" && ev.pour!==pourId){
+    return {type:"pickpocketCiblesAttente", nom:ev.nom, pour:ev.pour};
+  }
   if(ev.type==="pickpocketChoix" && ev.pour!==pourId){
     return {type:"pickpocketAttente", nom:ev.nom, victime:ev.victime, pour:ev.pour,
             combien:(ev.cartes||[]).length};
@@ -341,7 +347,7 @@ function fuir(s, joueur){
 }
 
 function jouerSpeciale(s, joueur, m){
-  if(!(s.phase==="tour"||s.phase==="vol") || joueurCourant(s)!==joueur) return;
+  if(!(s.phase==="tour"||s.phase==="vol"||s.phase==="pickpocketCible") || joueurCourant(s)!==joueur) return;
   // le Vol demandé par le serveur (effet immédiat)
   if(s.phase==="vol"){
     const cible=s.joueurs.find(x=>x.id===m.cible);
@@ -381,6 +387,16 @@ function jouerSpeciale(s, joueur, m){
     return;
   }
   if(c.k==="pickpocket"){
+    // Sur téléphone, le joueur peut d'abord regarder les cartes spéciales de
+    // TOUS les adversaires encore en jeu avant de décider qui fouiller.
+    if(s.phase==="tour" && !m.cible){
+      const cibles=actifs(s).filter(x=>x!==joueur && x.main.length);
+      if(!cibles.length) return;
+      s.phase="pickpocketCible"; s.apercu=null;
+      s.evenement={type:"pickpocketCibles", pour:joueur.id, nom:joueur.nom, index:idx,
+        cibles:cibles.map(x=>({id:x.id, nom:x.nom, cartes:x.main.slice()}))};
+      return;
+    }
     const proie=s.joueurs.find(x=>x.id===m.cible);
     if(!proie || proie===joueur || proie.fui || proie.pris || !proie.main.length) return;
     joueur.main.splice(idx,1);
@@ -454,101 +470,107 @@ const NOMS_BOTS=["Vito","Nina","Marlo","Suzie","Franck","Lola","Karim","Bébert"
 
 function estBot(j){ return !!j.bot; }
 
+function botAudace(j){
+  // Profil stable par complice : certains sont prudents, d'autres franchement casse-cou.
+  const txt=(j.id||"")+"|"+(j.nom||""); let h=0;
+  for(let i=0;i<txt.length;i++) h=(h*31+txt.charCodeAt(i))%997;
+  return h/996; // 0 = prudent, 1 = très audacieux
+}
 function botDecideFuite(s,j){
   const v=valeur(j);
   if(j.force || v===0) return false;
-  const restantes=s.pioche.length||1;
-  const pAlarme=s.pioche.filter(c=>c.t==="alarme").length/restantes;
-  if(s.alarmes===2) return v>=11 || pAlarme>0.16 || Math.random()<0.30;
-  if(s.alarmes===1) return v>=20 && Math.random()<0.55;
-  return v>=30 && Math.random()<0.40;
+  const a=botAudace(j);
+  // L'IA ne triche plus en regardant la composition réelle de la pioche.
+  // Même avec deux alarmes elle peut choisir de rester et donc se faire prendre.
+  let seuil, chance;
+  if(s.alarmes===2){ seuil=Math.round(18+18*a); chance=0.62-0.28*a; }
+  else if(s.alarmes===1){ seuil=Math.round(30+20*a); chance=0.38-0.18*a; }
+  else { seuil=Math.round(42+24*a); chance=0.24-0.12*a; }
+  return v>=seuil && Math.random()<chance;
 }
 function botJoueSpeciale(s,j){
-  // un complice qui accumule finit par jouer : il ne garde jamais plus de deux cartes
-  const trop = j.main.filter(c=>c.k!=="complice").length >= 2;
-  // il inspecte la pioche dès la première alarme (les autres cas suivent)
+  // Une IA ne joue plus chaque carte au moment parfaitement optimal.
+  const trop = j.main.filter(c=>c.k!=="complice").length >= 4;
+
   const es=j.main.findIndex(c=>c.k==="espion");
-  if(es>=0 && (trop || (s.alarmes>=1 && Math.random()<0.6))){
-    jouerSpeciale(s,j,{index:es});
-    return true;
+  if(es>=0 && (trop ? Math.random()<0.60 : (s.alarmes>=1 && Math.random()<0.32))){
+    jouerSpeciale(s,j,{index:es}); return true;
   }
-  // éteindre une alarme quand ça chauffe vraiment
+
   const cc=j.main.findIndex(c=>c.k==="courtcircuit");
-  if(cc>=0 && s.alarmes>=2){ jouerSpeciale(s,j,{index:cc}); return true; }
-  // planquer sa plus grosse carte quand le sac devient précieux
+  if(cc>=0 && s.alarmes>=2 && Math.random()<0.55){
+    jouerSpeciale(s,j,{index:cc}); return true;
+  }
+
   const pl=j.main.findIndex(c=>c.k==="planque");
-  if(pl>=0 && j.sac.length && (s.alarmes>=1 || valeurSac(j)>=12)){
-    let best=0; j.sac.forEach((c,n)=>{ if(c.v>j.sac[best].v) best=n; });
-    jouerSpeciale(s,j,{index:pl, carte:best});
-    return true;
+  if(pl>=0 && j.sac.length && (s.alarmes>=1 || valeurSac(j)>=16) && Math.random()<0.45){
+    // pas toujours la meilleure carte : l'IA peut faire un choix moyen
+    const ordre=j.sac.map((c,n)=>n).sort((a,b)=>j.sac[b].v-j.sac[a].v);
+    const choix=ordre[Math.min(ordre.length-1, crypto.randomInt(Math.min(3,ordre.length)))];
+    jouerSpeciale(s,j,{index:pl, carte:choix}); return true;
   }
-  // le Troc : quand le sac d'en face est nettement plus garni que le sien
+
   const tr=j.main.findIndex(c=>c.k==="troc");
-  if(tr>=0){
-    const proies=actifs(s).filter(x=>x!==j && valeurSac(x)>=valeurSac(j)+9);
+  if(tr>=0 && Math.random()<0.45){
+    const proies=actifs(s).filter(x=>x!==j && valeurSac(x)>=valeurSac(j)+6);
     if(proies.length){
-      let cible=proies[0];
-      proies.forEach(x=>{ if(valeurSac(x)>valeurSac(cible)) cible=x; });
-      jouerSpeciale(s,j,{index:tr, cible:cible.id});
-      return true;
+      const cible=proies[crypto.randomInt(proies.length)];
+      jouerSpeciale(s,j,{index:tr, cible:cible.id}); return true;
     }
   }
-  // le Pickpocket : il fouille celui qui a le plus de cartes
+
   const pp=j.main.findIndex(c=>c.k==="pickpocket");
-  if(pp>=0){
-    const riches=actifs(s).filter(x=>x!==j && x.main.length);
-    if(riches.length){
-      let cible=riches[0];
-      riches.forEach(x=>{ if(x.main.length>cible.main.length) cible=x; });
-      jouerSpeciale(s,j,{index:pp, cible:cible.id});
-      return true;
+  if(pp>=0 && Math.random()<0.48){
+    const cibles=actifs(s).filter(x=>x!==j && x.main.length);
+    if(cibles.length){
+      const cible=cibles[crypto.randomInt(cibles.length)];
+      jouerSpeciale(s,j,{index:pp, cible:cible.id}); return true;
     }
   }
-  // le Monte-en-l'air : tant qu'il n'y a pas d'alarme, on double la mise
+
   const ml=j.main.findIndex(c=>c.k==="monteenlair");
-  if(ml>=0 && (trop || (s.alarmes===0 && Math.random()<0.6))){
-    jouerSpeciale(s,j,{index:ml});
-    return true;
+  if(ml>=0 && (trop ? Math.random()<0.45 : (s.alarmes===0 && Math.random()<0.30))){
+    jouerSpeciale(s,j,{index:ml}); return true;
   }
-  // de temps en temps, un mauvais tour au joueur le mieux loti
+
   const i=j.main.findIndex(c=>c.k==="sacperce"||c.k==="balance");
-  if(i<0 || (!trop && Math.random()>0.45)) return false;
+  if(i<0 || (!trop && Math.random()>0.30)) return false;
   const c=j.main[i];
   const cibles=actifs(s).filter(x=>x!==j && (c.k!=="sacperce"||x.sac.length));
   if(!cibles.length) return false;
-  let cible=cibles[0];
-  cibles.forEach(x=>{ if(valeur(x)>valeur(cible)) cible=x; });
+  const cible=cibles[crypto.randomInt(cibles.length)];
   jouerSpeciale(s,j,{index:i, cible:cible.id});
   return true;
 }
 
-/* Dernier filet : un complice qui a trop de cartes en joue une, quelle qu'elle soit.
-   Sans cela il peut en accumuler quatre faute de conditions idéales. */
+/* Si une IA accumule vraiment beaucoup de cartes, elle finit par en jouer une,
+   mais seulement à partir de quatre : elle peut donc aussi gaspiller des occasions. */
 function botVideSaMain(s,j){
-  if(j.main.filter(c=>c.k!=="complice").length < 3) return false;
+  if(j.main.filter(c=>c.k!=="complice").length < 4) return false;
   const autres=actifs(s).filter(x=>x!==j);
+  const options=[];
   for(let i=0;i<j.main.length;i++){
-    const c=j.main[i];
-    if(c.k==="complice") continue;
-    if(c.k==="espion" || c.k==="monteenlair"){ jouerSpeciale(s,j,{index:i}); return true; }
-    if(c.k==="courtcircuit" && s.alarmes>=1){ jouerSpeciale(s,j,{index:i}); return true; }
-    if(c.k==="planque" && j.sac.length){ jouerSpeciale(s,j,{index:i, carte:0}); return true; }
-    if(c.k==="vol" || c.k==="sacperce"){
-      const proies=autres.filter(x=>x.sac.length);
-      if(proies.length){ jouerSpeciale(s,j,{index:i, cible:proies[0].id, carte:0}); return true; }
-    }
-    if((c.k==="balance"||c.k==="troc") && autres.length){
-      jouerSpeciale(s,j,{index:i, cible:autres[0].id}); return true;
+    const c=j.main[i]; if(c.k==="complice") continue;
+    if(c.k==="espion" || c.k==="monteenlair") options.push(()=>jouerSpeciale(s,j,{index:i}));
+    else if(c.k==="courtcircuit" && s.alarmes>=1) options.push(()=>jouerSpeciale(s,j,{index:i}));
+    else if(c.k==="planque" && j.sac.length) options.push(()=>jouerSpeciale(s,j,{index:i,carte:crypto.randomInt(j.sac.length)}));
+    else if((c.k==="vol"||c.k==="sacperce") && autres.some(x=>x.sac.length)){
+      options.push(()=>{ const p=autres.filter(x=>x.sac.length); const x=p[crypto.randomInt(p.length)]; jouerSpeciale(s,j,{index:i,cible:x.id,carte:crypto.randomInt(x.sac.length)}); });
+    } else if((c.k==="balance"||c.k==="troc") && autres.length){
+      options.push(()=>{ const x=autres[crypto.randomInt(autres.length)]; jouerSpeciale(s,j,{index:i,cible:x.id}); });
+    } else if(c.k==="pickpocket" && autres.some(x=>x.main.length)){
+      options.push(()=>{ const p=autres.filter(x=>x.main.length); const x=p[crypto.randomInt(p.length)]; jouerSpeciale(s,j,{index:i,cible:x.id}); });
     }
   }
-  return false;
+  if(!options.length) return false;
+  options[crypto.randomInt(options.length)](); return true;
 }
 function botAgit(s){
   const j=joueurCourant(s);
   if(!j || !estBot(j)) return;
   if(s.phase==="tour"){
     if(botVideSaMain(s,j)) return;
-    if(botJoueSpeciale(s,j)) return;         // la révélation enchaînera
+    if(botJoueSpeciale(s,j)) return;
     if(botDecideFuite(s,j)) fuir(s,j); else piocher(s,j);
     return;
   }
@@ -556,22 +578,32 @@ function botAgit(s){
   if(s.phase==="vol"){
     const cibles=actifs(s).filter(x=>x!==j && x.sac.length);
     if(!cibles.length){ tourSuivant(s); return; }
-    let cible=cibles[0];
-    cibles.forEach(x=>{ if(valeur(x)>valeur(cible)) cible=x; });
-    let meilleure=0;
-    cible.sac.forEach((c,n)=>{ if(c.v>cible.sac[meilleure].v) meilleure=n; });
-    jouerSpeciale(s,j,{cible:cible.id, carte:meilleure});
+    const cible=cibles[crypto.randomInt(cibles.length)];
+    const carte=crypto.randomInt(cible.sac.length); // plus de vol systématique de la meilleure carte
+    jouerSpeciale(s,j,{cible:cible.id, carte});
     return;
   }
   if(s.phase==="pickpocket"){
     prendreCarte(s,j,{index:crypto.randomInt(Math.max(1,(s.evenement.cartes||[]).length))});
     return;
   }
+  if(s.phase==="pickpocketCible"){
+    const c=(s.evenement&&s.evenement.cibles)||[];
+    if(!c.length){ s.phase="tour"; s.evenement=null; return; }
+    const x=c[crypto.randomInt(c.length)];
+    jouerSpeciale(s,j,{index:s.evenement.index|0,cible:x.id});
+    return;
+  }
   if(s.phase==="espion"){
-    // il place la meilleure carte en premier, l'alarme en dernier
-    const n=Math.min((s.evenement && s.evenement.cartes || []).length || 3, s.pioche.length);
-    const note=c=>c.t==="alarme"?-100:(c.t==="butin"?c.v:6);
-    const ordre=Array.from({length:n},(_,i)=>i).sort((a,b)=>note(s.pioche[b])-note(s.pioche[a]));
+    const n=Math.min((s.evenement&&s.evenement.cartes||[]).length||1,s.pioche.length);
+    let ordre=Array.from({length:n},(_,i)=>i);
+    if(Math.random()<0.35 && n>1){
+      // Parfois un bon coup, mais pas un tri parfait de toute la pioche.
+      const note=c=>c.t==="alarme"?-30:(c.t==="butin"?c.v:5);
+      let best=0;
+      for(let k=1;k<n;k++) if(note(s.pioche[k])>note(s.pioche[best])) best=k;
+      ordre=ordre.filter(x=>x!==best); melange(ordre); ordre.unshift(best);
+    }else melange(ordre);
     ordreEspion(s,j,{ordre});
     return;
   }
@@ -581,7 +613,7 @@ function planifierBot(s){
   if(!s.joueurs.some(estBot)) return;   // solo comme multijoueur : dès qu'il y a un complice
   const j=joueurCourant(s);
   if(!j || !estBot(j)) return;
-  if(["tour","revele","vol","espion","pickpocket"].indexOf(s.phase)<0) return;
+  if(["tour","revele","vol","espion","pickpocket","pickpocketCible"].indexOf(s.phase)<0) return;
   const jeton=++s.jetonBot;
   const delai = s.phase==="revele" ? 1300 : 900;   // le temps de lire l'écran
   setTimeout(()=>{
@@ -591,6 +623,8 @@ function planifierBot(s){
     planifierBot(s);
   },delai);
 }
+
+
 
 /* ---------- WebSocket (implémenté sans dépendance) ---------- */
 function accepter(req, socket){

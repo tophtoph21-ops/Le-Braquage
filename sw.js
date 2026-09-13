@@ -2,7 +2,7 @@
    Permet à l'application de s'installer et de s'ouvrir sans connexion.
    Le solo et l'apprentissage fonctionnent alors entièrement hors ligne. */
 "use strict";
-const CACHE = "braquage-v3-haessy-fullscreen";
+const CACHE = "braquage-v1";
 const FICHIERS = [
   "/",
   "/manifest.webmanifest",

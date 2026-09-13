@@ -50,7 +50,7 @@ __REGLES__
     RENDU=rendu;
     S=nouveauSalon(MOI);
     S.solo=true;
-    S.cible=(cible===50?50:100);
+    S.cible=OBJECTIFS.indexOf(cible|0)>=0 ? (cible|0) : 100;
     S.joueurs.push({id:MOI, nom:(nom||"Toi").slice(0,10), ws:null, connecte:true,
       total:0, sac:[], main:[], planque:[], fui:false, pris:false, force:false, rab:0});
     var n=Math.max(1,Math.min(9,combien|0||2));
@@ -75,6 +75,7 @@ __REGLES__
       case "continuer": continuer(S,moi); break;
       case "speciale":  jouerSpeciale(S,moi,m); break;
       case "ordre":     ordreEspion(S,moi,m); break;
+      case "prendre":   prendreCarte(S,moi,m); break;
       case "mancheSuivante":
         if(S.phase==="police"){ finManche(S); break; }
         if(S.phase!=="finManche") return;
