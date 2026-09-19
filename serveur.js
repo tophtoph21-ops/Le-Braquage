@@ -22,7 +22,8 @@ const SPECIALES = {
   complice:1,        // très rare : sauve un sac entier de la police
   planque:1,         // rare : met du butin définitivement à l'abri
   courtcircuit:1,    // rare : éteint une alarme
-  troc:1             // rare : échange deux sacs entiers
+  troc:1,            // rare : échange deux sacs entiers
+  rappel:1           // unique : fait revenir un joueur qui avait fui
 };
 const SPECIALES_ADAPTABLES = new Set(["balance","sacperce","espion","vol","monteenlair"]);
 const NB_ALARMES = 9;
@@ -33,7 +34,7 @@ const NOMS_SP = {
   balance:"BALANCE", complice:"COMPLICE", sacperce:"SAC PERCÉ",
   espion:"L'ESPION", vol:"LE VOL", planque:"LA PLANQUE",
   courtcircuit:"LE COURT-CIRCUIT", monteenlair:"MONTE-EN-L'AIR", troc:"LE TROC",
-  pickpocket:"LE PICKPOCKET"
+  pickpocket:"LE PICKPOCKET", rappel:"LE RAPPEL"
 };
 
 function melange(a){
@@ -44,8 +45,8 @@ function melange(a){
    cartes, et pas deux alarmes avant la 18e. On remélange tant que ce n'est pas le cas. */
 /* Les alarmes ne sont plus jetées au hasard : on leur réserve des emplacements
    espacés. Fini les deux alarmes coup sur coup et les manches expédiées. */
-const DEBUT_SUR = 7;    // aucune alarme dans les 7 premières cartes
-const ECART_MIN = 6;    // au moins 6 cartes entre deux alarmes
+const DEBUT_SUR = 10;   // début plus respirable : l'alarme n'arrive plus presque toujours vers le 6e tour
+const ECART_MIN = 7;    // davantage d'air entre les alarmes avant l'escalade de sécurité
 
 /* Seules les trois premières alarmes décident de la manche : c'est elles
    qu'on place, chacune dans sa fenêtre, avec un écart garanti. */
@@ -69,9 +70,9 @@ function positionsAlarmes(taille, combien, f){
     return x;
   };
   const ecart=Math.round(ECART_MIN*f);
-  const a1=poser(entre(Math.round(DEBUT_SUR*f), Math.round(20*f)));
-  const a2=poser(entre(a1+ecart, Math.round(34*f)));
-  const a3=poser(entre(a2+ecart, Math.round(48*f)));
+  const a1=poser(entre(Math.round(DEBUT_SUR*f), Math.round(24*f)));
+  const a2=poser(entre(a1+ecart, Math.round(39*f)));
+  const a3=poser(entre(a2+ecart, Math.round(55*f)));
   // les six suivantes ne servent que si la manche s'éternise : on les étale
   let curseur=a3;
   for(let i=3;i<combien;i++){
@@ -124,8 +125,9 @@ function paquetNouvelleManche(s){
   return paquet;
 }
 // le sac (en jeu, saisissable) + la planque (déjà à l'abri, même de la police)
-const valeur = j => j.sac.reduce((s,c)=>s+c.v,0) + (j.planque||[]).reduce((s,c)=>s+c.v,0);
-const valeurSac = j => j.sac.reduce((s,c)=>s+c.v,0);
+const valeurSacBrute = j => j.sac.reduce((s,c)=>s+c.v,0);
+const valeurSac = j => Math.max(0, valeurSacBrute(j) - (j.penalite||0));
+const valeur = j => valeurSac(j) + (j.planque||[]).reduce((s,c)=>s+c.v,0);
 
 /* ---------- salons ---------- */
 const salons = new Map();
@@ -143,10 +145,51 @@ function nouveauSalon(hoteId){
     code:codeLibre(), hote:hoteId, phase:"salon", cible:100,
     joueurs:[], pioche:[], alarmes:0, tour:0, manche:0,
     solo:false, jetonBot:0, messages:[], derniereOuverture:null,
-    premierFuyard:null, evenement:null, apercu:null, classement:null
+    premierFuyard:null, evenement:null, apercu:null, classement:null,
+    historique:[], securiteNiveau:0
   };
 }
 const actifs = s => s.joueurs.filter(j=>j.connecte && !j.fui && !j.pris);
+
+function journal(s, texte){
+  if(!s.historique) s.historique=[];
+  s.historique.push({t:Date.now(), texte:String(texte||"")});
+  if(s.historique.length>12) s.historique.shift();
+}
+function niveauSecurite(s){
+  const a=actifs(s);
+  if(!a.length) return 0;
+  const depart=s.nbDepartManche||s.joueurs.length;
+  const gros=a.some(j=>valeur(j)>=30);
+  if(!gros || a.length>3 || a.length>=depart) return 0;
+  return a.length===1 ? 3 : a.length===2 ? 2 : 1;
+}
+function mettreAJourSecurite(s){
+  const nv=niveauSecurite(s);
+  if(nv<= (s.securiteNiveau||0)) return false;
+  s.securiteNiveau=nv;
+  // On ne touche jamais aux 4 prochaines cartes : la difficulté augmente sans piège immédiat.
+  const candidats=[];
+  for(let i=4;i<s.pioche.length;i++){
+    const c=s.pioche[i];
+    if(c && c.t==="sp" && c.k!=="rappel") candidats.push(i);
+  }
+  melange(candidats);
+  const convert=Math.min(candidats.length, nv+1);
+  for(let k=0;k<convert;k++) s.pioche[candidats[k]]={t:"alarme"};
+  // En 1v1 / joueur seul, une alarme supplémentaire est glissée plus loin.
+  if(nv>=2 && s.pioche.length>10){
+    const pos=Math.min(s.pioche.length-1, 7+crypto.randomInt(Math.min(8,Math.max(1,s.pioche.length-7))));
+    s.pioche.splice(pos,0,{t:"alarme"});
+  }
+  journal(s, nv===1 ? "🚨 Sécurité renforcée : le casse se complique."
+                    : nv===2 ? "🚨 Sécurité maximale : il ne reste que deux joueurs."
+                             : "🚨 Dernier braqueur : le coffre devient impitoyable.");
+  return true;
+}
+function tickFantomes(s){
+  s.joueurs.forEach(j=>{ if((j.fantome||0)>0) j.fantome--; });
+}
 
 /* Chaque joueur reçoit sa propre vue : sa main lui est réservée, celle des
    autres n'apparaît qu'en nombre de cartes. La pioche n'est jamais envoyée. */
@@ -170,6 +213,9 @@ function filtrerEvenement(ev, pourId){
   if(ev.type==="espionChoix" && ev.pour!==pourId){
     return {type:"espionAttente", nom:ev.nom, pour:ev.pour, combien:(ev.cartes||[]).length};
   }
+  if(ev.type==="fuiteFantome" && ev.pour!==pourId){
+    return {type:"butin", carte:ev.fausse, pour:ev.pour, nom:ev.nom, faux:true};
+  }
   return ev;
 }
 function etatPublic(s, pourId){
@@ -178,6 +224,8 @@ function etatPublic(s, pourId){
     alarmes:s.alarmes, restantes:s.pioche.length, hote:s.hote,
     tour:s.tour, evenement:filtrerEvenement(s.evenement,pourId),
     messages:s.messages||[],
+    historique:(s.historique||[]).slice(-5),
+    securite:s.securiteNiveau||0,
     apercu:null, classement:s.classement,
     joueurs:s.joueurs.map(j=>({
       id:j.id, nom:j.nom, bot:!!j.bot, connecte:j.connecte, total:j.total,
@@ -185,7 +233,9 @@ function etatPublic(s, pourId){
       planque:j.planque||[],                       // butin déjà à l'abri, hors d'atteinte
       main:(j.id===pourId ? j.main : null),        // la main : secrète
       cartesEnMain:j.main.length,
-      fui:j.fui, pris:j.pris, force:j.force
+      penalite:j.penalite||0,
+      fui:(j.fantome>0 && j.id!==pourId ? false : j.fui),
+      pris:j.pris, force:j.force
     }))
   };
 }
@@ -213,13 +263,15 @@ function tourSuivant(s){
   let n=s.tour, t=0;
   do{ n=(n+1)%s.joueurs.length; t++; }
   while((s.joueurs[n].fui||s.joueurs[n].pris||!s.joueurs[n].connecte) && t<=s.joueurs.length);
-  s.tour=n; s.phase="tour"; s.evenement=null;
+  s.tour=n; tickFantomes(s); s.phase="tour"; s.evenement=null;
 }
 
 function nouvelleManche(s, premier){
   s.manche++; s.pioche=paquetNouvelleManche(s); s.alarmes=0; s.premierFuyard=null;
-  s.evenement=null; s.apercu=null; s.classement=null;
-  s.joueurs.forEach(j=>{ j.sac=[]; j.main=[]; j.planque=[]; j.fui=false; j.pris=false; j.force=false; j.rab=0; j.reprise=false; });
+  s.evenement=null; s.apercu=null; s.classement=null; s.historique=[]; s.securiteNiveau=0;
+  s.nbDepartManche=s.joueurs.filter(j=>j.connecte).length;
+  s.joueurs.forEach(j=>{ j.sac=[]; j.main=[]; j.planque=[]; j.fui=false; j.pris=false; j.force=false;
+    j.rab=0; j.reprise=false; j.penalite=0; j.fantome=0; });
   s.tour = premier % s.joueurs.length;
   if(!s.joueurs[s.tour].connecte) tourSuivant(s);
   s.phase="tour";
@@ -243,8 +295,15 @@ function police(s){
   const sauves=[], pris=[];
   actifs(s).forEach(j=>{
     const i=j.main.findIndex(c=>c.k==="complice");
-    if(i>=0){ j.main.splice(i,1); j.fui=true; sauves.push(j.nom); }
-    else { j.pris=true; j.sac=[]; pris.push(j.nom); }   // la planque, elle, reste acquise
+    if(i>=0){
+      j.main.splice(i,1);
+      const brut=valeurSacBrute(j), deja=j.penalite||0;
+      const net=Math.max(0,brut-deja);
+      if(net>30) j.penalite=deja+(net-30); // le Complice protège au maximum 30 pts du sac
+      j.fui=true; sauves.push(j.nom);
+      journal(s,j.nom+" est sauvé par son Complice (30 pts max protégés).");
+    }
+    else { j.pris=true; j.sac=[]; j.penalite=0; pris.push(j.nom); }   // la planque, elle, reste acquise
   });
   s.phase="police";
   s.evenement={type:"police", pris, sauves};
@@ -258,20 +317,25 @@ function piocher(s, joueur){
   joueur.force=false;
   if(c.t==="butin"){
     joueur.sac.push(c);
+    journal(s,joueur.nom+" pioche "+c.v+" point"+(c.v>1?"s":"")+".");
+    mettreAJourSecurite(s);
     s.phase="revele";
     s.evenement={type:"butin", carte:c, pour:joueur.id, nom:joueur.nom};
     return;
   }
   if(c.t==="alarme"){
     s.alarmes++;
+    const perte=Math.min(valeurSac(joueur), 1+crypto.randomInt(5));
+    if(perte>0) joueur.penalite=(joueur.penalite||0)+perte;
+    journal(s,joueur.nom+" déclenche l'alarme "+s.alarmes+(perte?" et perd "+perte+" pt"+(perte>1?"s":"")+".":"."));
     if(s.alarmes>=3){
-      s.evenement={type:"alarme", carte:c, rang:3, pour:joueur.id, nom:joueur.nom};
+      s.evenement={type:"alarme", carte:c, rang:3, perte, pour:joueur.id, nom:joueur.nom};
       s.phase="revele";
       s.apercu="police";     // après le « continuer », la police débarque
       return;
     }
     s.phase="revele";
-    s.evenement={type:"alarme", carte:c, rang:s.alarmes, pour:joueur.id, nom:joueur.nom};
+    s.evenement={type:"alarme", carte:c, rang:s.alarmes, perte, pour:joueur.id, nom:joueur.nom};
     return;
   }
   if(c.k==="vol"){
@@ -281,6 +345,7 @@ function piocher(s, joueur){
     return;
   }
   joueur.main.push(c);
+  journal(s,joueur.nom+" trouve une carte spéciale.");
   s.phase="revele";
   s.evenement={type:"speciale", carte:c, pour:joueur.id, nom:joueur.nom};
 }
@@ -341,9 +406,23 @@ function fuir(s, joueur){
   if(s.phase!=="tour" || joueurCourant(s)!==joueur || joueur.force) return;
   joueur.fui=true;
   if(s.premierFuyard===null) s.premierFuyard=s.joueurs.indexOf(joueur);
+  journal(s,joueur.nom+" fuit avec "+valeur(joueur)+" pts.");
+  mettreAJourSecurite(s);
   s.phase="revele";
   s.evenement={type:"fuite", pour:joueur.id, nom:joueur.nom, points:valeur(joueur)};
   s.apercu=null;
+}
+function fuirFantome(s,joueur){
+  if(s.phase!=="espion" || joueurCourant(s)!==joueur || s.alarmes!==2) return;
+  const cartes=(s.evenement&&s.evenement.cartes)||[];
+  if(!cartes.some(c=>c.t==="alarme")) return;
+  joueur.fui=true; joueur.fantome=2;
+  if(s.premierFuyard===null) s.premierFuyard=s.joueurs.indexOf(joueur);
+  const fausse={t:"butin",v:1+crypto.randomInt(5)};
+  journal(s,joueur.nom+" quitte discrètement le casse.");
+  mettreAJourSecurite(s);
+  s.phase="revele"; s.apercu=null;
+  s.evenement={type:"fuiteFantome", pour:joueur.id, nom:joueur.nom, points:valeur(joueur), fausse};
 }
 
 function jouerSpeciale(s, joueur, m){
@@ -368,7 +447,8 @@ function jouerSpeciale(s, joueur, m){
     // de quoi savoir exactement laquelle lui reviendra
     // il garde la main : la première carte lui reviendra s'il pioche
     const suite=[joueur].concat(ordreDePassage(s, s.tour));
-    const combien=Math.min(Math.max(1,actifs(s).length), s.pioche.length);
+    const nbActifs=actifs(s).length;
+    const combien=Math.min(nbActifs===1 ? 3 : Math.max(1,nbActifs), s.pioche.length);
     s.phase="espion"; s.apercu=null;
     s.evenement={type:"espionChoix", cartes:s.pioche.slice(0,combien),
                  pour:joueur.id, nom:joueur.nom,
@@ -428,6 +508,7 @@ function jouerSpeciale(s, joueur, m){
     joueur.main.splice(idx,1);
     s.alarmes--;
     s.phase="revele"; s.apercu=null;
+    journal(s,joueur.nom+" coupe une alarme.");
     s.evenement={type:"courtcircuit", nom:joueur.nom, pour:joueur.id, restantes:s.alarmes};
     return;
   }
@@ -441,6 +522,16 @@ function jouerSpeciale(s, joueur, m){
     s.evenement={type:"planque", carte:mise, nom:joueur.nom, pour:joueur.id};
     return;
   }
+  if(c.k==="rappel"){
+    const cible=s.joueurs.find(x=>x.id===m.cible);
+    if(!cible || cible===joueur || !cible.fui || cible.pris) return;
+    joueur.main.splice(idx,1);
+    cible.fui=false; cible.fantome=0;
+    journal(s,joueur.nom+" fait revenir "+cible.nom+" dans le casse.");
+    s.phase="revele"; s.apercu=null;
+    s.evenement={type:"rappel", nom:joueur.nom, victime:cible.nom, pour:joueur.id};
+    return;
+  }
   const cible=s.joueurs.find(x=>x.id===m.cible);
   if(!cible || cible===joueur || cible.fui || cible.pris) return;
   if(c.k==="balance"){
@@ -448,6 +539,7 @@ function jouerSpeciale(s, joueur, m){
     cible.force=true;
     joueur.reprise=true;        // seule la Balance laisse le choix : piocher ou fuir
     s.phase="revele"; s.apercu=null;
+    journal(s,joueur.nom+" joue Balance sur "+cible.nom+".");
     s.evenement={type:"balance", nom:joueur.nom, victime:cible.nom, pour:joueur.id};
     return;
   }
@@ -457,6 +549,7 @@ function jouerSpeciale(s, joueur, m){
     let p=0; cible.sac.forEach((x,n)=>{ if(x.v>cible.sac[p].v) p=n; });
     const perdue=cible.sac.splice(p,1)[0];
     s.phase="revele"; s.apercu=null;
+    journal(s,joueur.nom+" perce le sac de "+cible.nom+".");
     s.evenement={type:"sacperce", carte:perdue, nom:joueur.nom, victime:cible.nom, pour:joueur.id};
     return;
   }
@@ -532,6 +625,11 @@ function botJoueSpeciale(s,j){
   if(ml>=0 && (trop ? Math.random()<0.45 : (s.alarmes===0 && Math.random()<0.30))){
     jouerSpeciale(s,j,{index:ml}); return true;
   }
+  const rp=j.main.findIndex(c=>c.k==="rappel");
+  if(rp>=0 && Math.random()<0.45){
+    const partis=s.joueurs.filter(x=>x!==j && x.fui && !x.pris);
+    if(partis.length){ const x=partis[crypto.randomInt(partis.length)]; jouerSpeciale(s,j,{index:rp,cible:x.id}); return true; }
+  }
 
   const i=j.main.findIndex(c=>c.k==="sacperce"||c.k==="balance");
   if(i<0 || (!trop && Math.random()>0.30)) return false;
@@ -560,6 +658,8 @@ function botVideSaMain(s,j){
       options.push(()=>{ const x=autres[crypto.randomInt(autres.length)]; jouerSpeciale(s,j,{index:i,cible:x.id}); });
     } else if(c.k==="pickpocket" && autres.some(x=>x.main.length)){
       options.push(()=>{ const p=autres.filter(x=>x.main.length); const x=p[crypto.randomInt(p.length)]; jouerSpeciale(s,j,{index:i,cible:x.id}); });
+    } else if(c.k==="rappel" && s.joueurs.some(x=>x!==j && x.fui && !x.pris)){
+      options.push(()=>{ const p=s.joueurs.filter(x=>x!==j && x.fui && !x.pris); const x=p[crypto.randomInt(p.length)]; jouerSpeciale(s,j,{index:i,cible:x.id}); });
     }
   }
   if(!options.length) return false;
@@ -615,7 +715,7 @@ function planifierBot(s){
   if(!j || !estBot(j)) return;
   if(["tour","revele","vol","espion","pickpocket","pickpocketCible"].indexOf(s.phase)<0) return;
   const jeton=++s.jetonBot;
-  const delai = s.phase==="revele" ? 1300 : 900;   // le temps de lire l'écran
+  const delai = s.phase==="revele" ? 2300 : 1700;   // rythme volontairement plus lisible pour suivre la partie
   setTimeout(()=>{
     if(!salons.has(s.code) || s.jetonBot!==jeton) return;
     botAgit(s);
@@ -826,6 +926,10 @@ serveur.on("upgrade",(req,socket)=>{
         if(salon.messages.length>40) salon.messages.shift();
         break;
       }
+      case "reglage":
+        if(moi.id!==salon.hote || salon.phase!=="salon") return;
+        salon.cible=objectifValide(m.cible);
+        break;
       case "demarrer":
         if(moi.id!==salon.hote || salon.joueurs.length<2) return;
         salon.cible = objectifValide(m.cible);
@@ -835,6 +939,7 @@ serveur.on("upgrade",(req,socket)=>{
         break;
       case "piocher":   piocher(salon,moi); break;
       case "fuir":      fuir(salon,moi); break;
+      case "fuiteFantome": fuirFantome(salon,moi); break;
       case "continuer": continuer(salon,moi); break;
       case "speciale":  jouerSpeciale(salon,moi,m); break;
       case "ordre":     ordreEspion(salon,moi,m); break;
@@ -941,5 +1046,5 @@ if(require.main === module){
   });
 }
 
-module.exports = { nouveauSalon, botAgit, planifierBot, prendreCarte, nouvelleManche, piocher, fuir, continuer,
+module.exports = { nouveauSalon, botAgit, planifierBot, prendreCarte, nouvelleManche, piocher, fuir, fuirFantome, continuer,
                    jouerSpeciale, ordreEspion, finManche, police, etatPublic, valeur, salons };

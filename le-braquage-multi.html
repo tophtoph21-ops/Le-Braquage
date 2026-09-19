@@ -535,6 +535,30 @@ button.guide{box-shadow:0 5px 0 #6b530f,0 0 0 3px var(--or-clair),0 14px 26px rg
 #intro-video{position:absolute;inset:0;width:100%;height:100%;display:block;background:#000;
   object-fit:cover;object-position:center center}
 
+
+.tension-rouge{position:fixed;inset:0;z-index:38;pointer-events:none;
+  box-shadow:inset 0 0 42px 14px rgba(212,58,44,.72);
+  animation:tensionRouge 1.05s ease-in-out infinite}
+.tension-rouge::before,.tension-rouge::after{content:"";position:absolute;top:0;bottom:0;width:24%;
+  background:linear-gradient(90deg,rgba(255,25,20,.42),transparent);filter:blur(5px)}
+.tension-rouge::before{left:0}.tension-rouge::after{right:0;transform:scaleX(-1)}
+@keyframes tensionRouge{0%,100%{opacity:.38}50%{opacity:.92}}
+.securite-bandeau{position:fixed;top:calc(env(safe-area-inset-top) + 54px);left:50%;transform:translateX(-50%);
+  z-index:46;max-width:88vw;padding:8px 13px;background:rgba(80,8,6,.92);color:#ffd4ce;
+  border:1px solid rgba(255,90,70,.65);font-size:11px;font-weight:800;letter-spacing:.08em;text-align:center}
+.historique-mini{position:fixed;right:8px;bottom:calc(env(safe-area-inset-bottom) + 164px);z-index:12;
+  width:min(44vw,180px);max-height:108px;overflow:hidden;padding:7px 8px;background:rgba(5,8,16,.74);
+  border:1px solid rgba(227,192,92,.22);backdrop-filter:blur(4px);font-size:8.5px;line-height:1.35;color:#9eabc2}
+.historique-mini b{display:block;color:var(--or);font-size:8px;letter-spacing:.12em;margin-bottom:3px}
+.historique-mini div{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.billet{position:fixed;z-index:80;pointer-events:none;width:42px;height:21px;border-radius:3px;
+  background:linear-gradient(135deg,#d7f3c9,#7fc47a);border:1px solid #315c32;
+  box-shadow:0 3px 8px rgba(0,0,0,.35);animation:billetTombe linear forwards}
+.billet::after{content:"$";position:absolute;inset:0;display:flex;align-items:center;justify-content:center;
+  color:#28572c;font-weight:900;font-size:12px}
+@keyframes billetTombe{0%{transform:translateY(-12vh) rotate(0deg);opacity:1}
+  100%{transform:translateY(112vh) rotate(520deg);opacity:.9}}
+
 @media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
 
 </style>
@@ -618,6 +642,32 @@ function sonPorte(){
   });
 }
 function sonCoffre(){ bip(180,.22,"sawtooth",.1,90); }
+var tensionTimer=null, tensionNiveau=0;
+function arreterTension(){
+  if(tensionTimer){ clearInterval(tensionTimer); tensionTimer=null; }
+  tensionNiveau=0;
+  var r=document.getElementById("tension-rouge"); if(r) r.remove();
+}
+function majTension(){
+  if(!E || E.phase==="salon" || E.phase==="victoire" || E.phase==="finManche" || E.phase==="police" || E.alarmes<1){
+    arreterTension(); return;
+  }
+  var niv=Math.min(2,E.alarmes);
+  if(niv>=2 && !document.getElementById("tension-rouge")){
+    var d=el("div","tension-rouge"); d.id="tension-rouge"; document.body.appendChild(d);
+  }
+  if(niv<2){ var r=document.getElementById("tension-rouge"); if(r) r.remove(); }
+  if(!sonOn){ if(tensionTimer){clearInterval(tensionTimer);tensionTimer=null;} tensionNiveau=niv; return; }
+  if(tensionTimer && tensionNiveau===niv) return;
+  if(tensionTimer){ clearInterval(tensionTimer); tensionTimer=null; }
+  tensionNiveau=niv;
+  tensionTimer=setInterval(function(){
+    if(!E || E.alarmes<1 || !sonOn){ arreterTension(); return; }
+    var courant=Math.min(2,E.alarmes);
+    bip(courant===2?155:125,.22,"sawtooth",courant===2?.035:.022,courant===2?115:105);
+    if(courant===2) setTimeout(function(){bip(205,.12,"triangle",.025,170);},190);
+  }, niv===2 ? 640 : 1050);
+}
 function vibre(p){ if(navigator.vibrate) try{navigator.vibrate(p);}catch(e){} }
 
 /* ================= EFFETS ================= */
@@ -632,6 +682,16 @@ function pluieDePieces(n){
     document.body.appendChild(p);
     setTimeout(function(){p.remove();},3300);
   },k*85);})(i);
+}
+function pluieDeBillets(n){
+  for(var i=0;i<(n||34);i++)(function(k){setTimeout(function(){
+    var p=el("div","billet");
+    p.style.left=(Math.random()*94+1)+"vw";
+    p.style.animationDuration=(2.2+Math.random()*1.8)+"s";
+    p.style.transform="rotate("+(Math.random()*50-25)+"deg)";
+    document.body.appendChild(p);
+    setTimeout(function(){p.remove();},4600);
+  },k*80);})(i);
 }
 function etincelles(x,y,n,coul){
   for(var i=0;i<(n||12);i++){
@@ -667,7 +727,9 @@ var SPECIALES={
   pickpocket:{nom:"LE PICKPOCKET",coul:"var(--menthe)",ico:"",
     eff:"Fouille la main d'un adversaire, découvre ses cartes spéciales et prends celle que tu veux."},
   troc:{nom:"LE TROC",coul:"var(--rose)",ico:"",
-    eff:"Échange ton sac entier avec celui d'un adversaire encore dans le coffre."}
+    eff:"Échange ton sac entier avec celui d'un adversaire encore dans le coffre."},
+  rappel:{nom:"LE RAPPEL",coul:"var(--or-clair)",ico:"",
+    eff:"Une seule par manche : fais revenir dans le casse un joueur qui avait déjà fui."}
 };
 /* --- rendu des cartes : voir plus bas --- */
 function melange(a){for(var i=a.length-1;i>0;i--){var j=Math.floor(Math.random()*(i+1));var t=a[i];a[i]=a[j];a[j]=t;}return a;}
@@ -729,6 +791,8 @@ var EMBLEMES={
   troc:svg('<path d="M22 38h44l-12-12" stroke-width="6"/><path d="M78 62H34l12 12" stroke-width="6"/>'+
     '<circle cx="24" cy="70" r="9" fill="currentColor" opacity=".22"/><circle cx="24" cy="70" r="9"/>'+
     '<circle cx="76" cy="30" r="9" fill="currentColor" opacity=".22"/><circle cx="76" cy="30" r="9"/>'),
+  rappel:svg('<path d="M74 32H40c-14 0-24 10-24 24s10 24 24 24h22" stroke-width="7"/>'+
+    '<path d="M58 18l16 14-16 14" stroke-width="7"/><circle cx="66" cy="76" r="8" fill="currentColor" opacity=".2"/>'),
   courtcircuit:svg('<path d="M28 60c0-16 4-30 22-30s22 14 22 30" fill="currentColor" opacity=".14"/>'+
     '<path d="M28 60c0-16 4-30 22-30s22 14 22 30"/><path d="M20 60h60"/>'+
     '<path d="M50 30v-7"/><path d="M18 18l64 64" stroke-width="7"/>'+
@@ -914,7 +978,8 @@ const SPECIALES = {
   complice:1,        // très rare : sauve un sac entier de la police
   planque:1,         // rare : met du butin définitivement à l'abri
   courtcircuit:1,    // rare : éteint une alarme
-  troc:1             // rare : échange deux sacs entiers
+  troc:1,            // rare : échange deux sacs entiers
+  rappel:1           // unique : fait revenir un joueur qui avait fui
 };
 const SPECIALES_ADAPTABLES = new Set(["balance","sacperce","espion","vol","monteenlair"]);
 const NB_ALARMES = 9;
@@ -925,7 +990,7 @@ const NOMS_SP = {
   balance:"BALANCE", complice:"COMPLICE", sacperce:"SAC PERCÉ",
   espion:"L'ESPION", vol:"LE VOL", planque:"LA PLANQUE",
   courtcircuit:"LE COURT-CIRCUIT", monteenlair:"MONTE-EN-L'AIR", troc:"LE TROC",
-  pickpocket:"LE PICKPOCKET"
+  pickpocket:"LE PICKPOCKET", rappel:"LE RAPPEL"
 };
 
 function melange(a){
@@ -936,8 +1001,8 @@ function melange(a){
    cartes, et pas deux alarmes avant la 18e. On remélange tant que ce n'est pas le cas. */
 /* Les alarmes ne sont plus jetées au hasard : on leur réserve des emplacements
    espacés. Fini les deux alarmes coup sur coup et les manches expédiées. */
-const DEBUT_SUR = 7;    // aucune alarme dans les 7 premières cartes
-const ECART_MIN = 6;    // au moins 6 cartes entre deux alarmes
+const DEBUT_SUR = 10;   // début plus respirable : l'alarme n'arrive plus presque toujours vers le 6e tour
+const ECART_MIN = 7;    // davantage d'air entre les alarmes avant l'escalade de sécurité
 
 /* Seules les trois premières alarmes décident de la manche : c'est elles
    qu'on place, chacune dans sa fenêtre, avec un écart garanti. */
@@ -961,9 +1026,9 @@ function positionsAlarmes(taille, combien, f){
     return x;
   };
   const ecart=Math.round(ECART_MIN*f);
-  const a1=poser(entre(Math.round(DEBUT_SUR*f), Math.round(20*f)));
-  const a2=poser(entre(a1+ecart, Math.round(34*f)));
-  const a3=poser(entre(a2+ecart, Math.round(48*f)));
+  const a1=poser(entre(Math.round(DEBUT_SUR*f), Math.round(24*f)));
+  const a2=poser(entre(a1+ecart, Math.round(39*f)));
+  const a3=poser(entre(a2+ecart, Math.round(55*f)));
   // les six suivantes ne servent que si la manche s'éternise : on les étale
   let curseur=a3;
   for(let i=3;i<combien;i++){
@@ -1016,8 +1081,9 @@ function paquetNouvelleManche(s){
   return paquet;
 }
 // le sac (en jeu, saisissable) + la planque (déjà à l'abri, même de la police)
-const valeur = j => j.sac.reduce((s,c)=>s+c.v,0) + (j.planque||[]).reduce((s,c)=>s+c.v,0);
-const valeurSac = j => j.sac.reduce((s,c)=>s+c.v,0);
+const valeurSacBrute = j => j.sac.reduce((s,c)=>s+c.v,0);
+const valeurSac = j => Math.max(0, valeurSacBrute(j) - (j.penalite||0));
+const valeur = j => valeurSac(j) + (j.planque||[]).reduce((s,c)=>s+c.v,0);
 
 /* ---------- salons ---------- */
 
@@ -1035,10 +1101,51 @@ function nouveauSalon(hoteId){
     code:codeLibre(), hote:hoteId, phase:"salon", cible:100,
     joueurs:[], pioche:[], alarmes:0, tour:0, manche:0,
     solo:false, jetonBot:0, messages:[], derniereOuverture:null,
-    premierFuyard:null, evenement:null, apercu:null, classement:null
+    premierFuyard:null, evenement:null, apercu:null, classement:null,
+    historique:[], securiteNiveau:0
   };
 }
 const actifs = s => s.joueurs.filter(j=>j.connecte && !j.fui && !j.pris);
+
+function journal(s, texte){
+  if(!s.historique) s.historique=[];
+  s.historique.push({t:Date.now(), texte:String(texte||"")});
+  if(s.historique.length>12) s.historique.shift();
+}
+function niveauSecurite(s){
+  const a=actifs(s);
+  if(!a.length) return 0;
+  const depart=s.nbDepartManche||s.joueurs.length;
+  const gros=a.some(j=>valeur(j)>=30);
+  if(!gros || a.length>3 || a.length>=depart) return 0;
+  return a.length===1 ? 3 : a.length===2 ? 2 : 1;
+}
+function mettreAJourSecurite(s){
+  const nv=niveauSecurite(s);
+  if(nv<= (s.securiteNiveau||0)) return false;
+  s.securiteNiveau=nv;
+  // On ne touche jamais aux 4 prochaines cartes : la difficulté augmente sans piège immédiat.
+  const candidats=[];
+  for(let i=4;i<s.pioche.length;i++){
+    const c=s.pioche[i];
+    if(c && c.t==="sp" && c.k!=="rappel") candidats.push(i);
+  }
+  melange(candidats);
+  const convert=Math.min(candidats.length, nv+1);
+  for(let k=0;k<convert;k++) s.pioche[candidats[k]]={t:"alarme"};
+  // En 1v1 / joueur seul, une alarme supplémentaire est glissée plus loin.
+  if(nv>=2 && s.pioche.length>10){
+    const pos=Math.min(s.pioche.length-1, 7+crypto.randomInt(Math.min(8,Math.max(1,s.pioche.length-7))));
+    s.pioche.splice(pos,0,{t:"alarme"});
+  }
+  journal(s, nv===1 ? "🚨 Sécurité renforcée : le casse se complique."
+                    : nv===2 ? "🚨 Sécurité maximale : il ne reste que deux joueurs."
+                             : "🚨 Dernier braqueur : le coffre devient impitoyable.");
+  return true;
+}
+function tickFantomes(s){
+  s.joueurs.forEach(j=>{ if((j.fantome||0)>0) j.fantome--; });
+}
 
 /* Chaque joueur reçoit sa propre vue : sa main lui est réservée, celle des
    autres n'apparaît qu'en nombre de cartes. La pioche n'est jamais envoyée. */
@@ -1062,6 +1169,9 @@ function filtrerEvenement(ev, pourId){
   if(ev.type==="espionChoix" && ev.pour!==pourId){
     return {type:"espionAttente", nom:ev.nom, pour:ev.pour, combien:(ev.cartes||[]).length};
   }
+  if(ev.type==="fuiteFantome" && ev.pour!==pourId){
+    return {type:"butin", carte:ev.fausse, pour:ev.pour, nom:ev.nom, faux:true};
+  }
   return ev;
 }
 function etatPublic(s, pourId){
@@ -1070,6 +1180,8 @@ function etatPublic(s, pourId){
     alarmes:s.alarmes, restantes:s.pioche.length, hote:s.hote,
     tour:s.tour, evenement:filtrerEvenement(s.evenement,pourId),
     messages:s.messages||[],
+    historique:(s.historique||[]).slice(-5),
+    securite:s.securiteNiveau||0,
     apercu:null, classement:s.classement,
     joueurs:s.joueurs.map(j=>({
       id:j.id, nom:j.nom, bot:!!j.bot, connecte:j.connecte, total:j.total,
@@ -1077,7 +1189,9 @@ function etatPublic(s, pourId){
       planque:j.planque||[],                       // butin déjà à l'abri, hors d'atteinte
       main:(j.id===pourId ? j.main : null),        // la main : secrète
       cartesEnMain:j.main.length,
-      fui:j.fui, pris:j.pris, force:j.force
+      penalite:j.penalite||0,
+      fui:(j.fantome>0 && j.id!==pourId ? false : j.fui),
+      pris:j.pris, force:j.force
     }))
   };
 }
@@ -1105,13 +1219,15 @@ function tourSuivant(s){
   let n=s.tour, t=0;
   do{ n=(n+1)%s.joueurs.length; t++; }
   while((s.joueurs[n].fui||s.joueurs[n].pris||!s.joueurs[n].connecte) && t<=s.joueurs.length);
-  s.tour=n; s.phase="tour"; s.evenement=null;
+  s.tour=n; tickFantomes(s); s.phase="tour"; s.evenement=null;
 }
 
 function nouvelleManche(s, premier){
   s.manche++; s.pioche=paquetNouvelleManche(s); s.alarmes=0; s.premierFuyard=null;
-  s.evenement=null; s.apercu=null; s.classement=null;
-  s.joueurs.forEach(j=>{ j.sac=[]; j.main=[]; j.planque=[]; j.fui=false; j.pris=false; j.force=false; j.rab=0; j.reprise=false; });
+  s.evenement=null; s.apercu=null; s.classement=null; s.historique=[]; s.securiteNiveau=0;
+  s.nbDepartManche=s.joueurs.filter(j=>j.connecte).length;
+  s.joueurs.forEach(j=>{ j.sac=[]; j.main=[]; j.planque=[]; j.fui=false; j.pris=false; j.force=false;
+    j.rab=0; j.reprise=false; j.penalite=0; j.fantome=0; });
   s.tour = premier % s.joueurs.length;
   if(!s.joueurs[s.tour].connecte) tourSuivant(s);
   s.phase="tour";
@@ -1135,8 +1251,15 @@ function police(s){
   const sauves=[], pris=[];
   actifs(s).forEach(j=>{
     const i=j.main.findIndex(c=>c.k==="complice");
-    if(i>=0){ j.main.splice(i,1); j.fui=true; sauves.push(j.nom); }
-    else { j.pris=true; j.sac=[]; pris.push(j.nom); }   // la planque, elle, reste acquise
+    if(i>=0){
+      j.main.splice(i,1);
+      const brut=valeurSacBrute(j), deja=j.penalite||0;
+      const net=Math.max(0,brut-deja);
+      if(net>30) j.penalite=deja+(net-30); // le Complice protège au maximum 30 pts du sac
+      j.fui=true; sauves.push(j.nom);
+      journal(s,j.nom+" est sauvé par son Complice (30 pts max protégés).");
+    }
+    else { j.pris=true; j.sac=[]; j.penalite=0; pris.push(j.nom); }   // la planque, elle, reste acquise
   });
   s.phase="police";
   s.evenement={type:"police", pris, sauves};
@@ -1150,20 +1273,25 @@ function piocher(s, joueur){
   joueur.force=false;
   if(c.t==="butin"){
     joueur.sac.push(c);
+    journal(s,joueur.nom+" pioche "+c.v+" point"+(c.v>1?"s":"")+".");
+    mettreAJourSecurite(s);
     s.phase="revele";
     s.evenement={type:"butin", carte:c, pour:joueur.id, nom:joueur.nom};
     return;
   }
   if(c.t==="alarme"){
     s.alarmes++;
+    const perte=Math.min(valeurSac(joueur), 1+crypto.randomInt(5));
+    if(perte>0) joueur.penalite=(joueur.penalite||0)+perte;
+    journal(s,joueur.nom+" déclenche l'alarme "+s.alarmes+(perte?" et perd "+perte+" pt"+(perte>1?"s":"")+".":"."));
     if(s.alarmes>=3){
-      s.evenement={type:"alarme", carte:c, rang:3, pour:joueur.id, nom:joueur.nom};
+      s.evenement={type:"alarme", carte:c, rang:3, perte, pour:joueur.id, nom:joueur.nom};
       s.phase="revele";
       s.apercu="police";     // après le « continuer », la police débarque
       return;
     }
     s.phase="revele";
-    s.evenement={type:"alarme", carte:c, rang:s.alarmes, pour:joueur.id, nom:joueur.nom};
+    s.evenement={type:"alarme", carte:c, rang:s.alarmes, perte, pour:joueur.id, nom:joueur.nom};
     return;
   }
   if(c.k==="vol"){
@@ -1173,6 +1301,7 @@ function piocher(s, joueur){
     return;
   }
   joueur.main.push(c);
+  journal(s,joueur.nom+" trouve une carte spéciale.");
   s.phase="revele";
   s.evenement={type:"speciale", carte:c, pour:joueur.id, nom:joueur.nom};
 }
@@ -1233,9 +1362,23 @@ function fuir(s, joueur){
   if(s.phase!=="tour" || joueurCourant(s)!==joueur || joueur.force) return;
   joueur.fui=true;
   if(s.premierFuyard===null) s.premierFuyard=s.joueurs.indexOf(joueur);
+  journal(s,joueur.nom+" fuit avec "+valeur(joueur)+" pts.");
+  mettreAJourSecurite(s);
   s.phase="revele";
   s.evenement={type:"fuite", pour:joueur.id, nom:joueur.nom, points:valeur(joueur)};
   s.apercu=null;
+}
+function fuirFantome(s,joueur){
+  if(s.phase!=="espion" || joueurCourant(s)!==joueur || s.alarmes!==2) return;
+  const cartes=(s.evenement&&s.evenement.cartes)||[];
+  if(!cartes.some(c=>c.t==="alarme")) return;
+  joueur.fui=true; joueur.fantome=2;
+  if(s.premierFuyard===null) s.premierFuyard=s.joueurs.indexOf(joueur);
+  const fausse={t:"butin",v:1+crypto.randomInt(5)};
+  journal(s,joueur.nom+" quitte discrètement le casse.");
+  mettreAJourSecurite(s);
+  s.phase="revele"; s.apercu=null;
+  s.evenement={type:"fuiteFantome", pour:joueur.id, nom:joueur.nom, points:valeur(joueur), fausse};
 }
 
 function jouerSpeciale(s, joueur, m){
@@ -1260,7 +1403,8 @@ function jouerSpeciale(s, joueur, m){
     // de quoi savoir exactement laquelle lui reviendra
     // il garde la main : la première carte lui reviendra s'il pioche
     const suite=[joueur].concat(ordreDePassage(s, s.tour));
-    const combien=Math.min(Math.max(1,actifs(s).length), s.pioche.length);
+    const nbActifs=actifs(s).length;
+    const combien=Math.min(nbActifs===1 ? 3 : Math.max(1,nbActifs), s.pioche.length);
     s.phase="espion"; s.apercu=null;
     s.evenement={type:"espionChoix", cartes:s.pioche.slice(0,combien),
                  pour:joueur.id, nom:joueur.nom,
@@ -1320,6 +1464,7 @@ function jouerSpeciale(s, joueur, m){
     joueur.main.splice(idx,1);
     s.alarmes--;
     s.phase="revele"; s.apercu=null;
+    journal(s,joueur.nom+" coupe une alarme.");
     s.evenement={type:"courtcircuit", nom:joueur.nom, pour:joueur.id, restantes:s.alarmes};
     return;
   }
@@ -1333,6 +1478,16 @@ function jouerSpeciale(s, joueur, m){
     s.evenement={type:"planque", carte:mise, nom:joueur.nom, pour:joueur.id};
     return;
   }
+  if(c.k==="rappel"){
+    const cible=s.joueurs.find(x=>x.id===m.cible);
+    if(!cible || cible===joueur || !cible.fui || cible.pris) return;
+    joueur.main.splice(idx,1);
+    cible.fui=false; cible.fantome=0;
+    journal(s,joueur.nom+" fait revenir "+cible.nom+" dans le casse.");
+    s.phase="revele"; s.apercu=null;
+    s.evenement={type:"rappel", nom:joueur.nom, victime:cible.nom, pour:joueur.id};
+    return;
+  }
   const cible=s.joueurs.find(x=>x.id===m.cible);
   if(!cible || cible===joueur || cible.fui || cible.pris) return;
   if(c.k==="balance"){
@@ -1340,6 +1495,7 @@ function jouerSpeciale(s, joueur, m){
     cible.force=true;
     joueur.reprise=true;        // seule la Balance laisse le choix : piocher ou fuir
     s.phase="revele"; s.apercu=null;
+    journal(s,joueur.nom+" joue Balance sur "+cible.nom+".");
     s.evenement={type:"balance", nom:joueur.nom, victime:cible.nom, pour:joueur.id};
     return;
   }
@@ -1349,6 +1505,7 @@ function jouerSpeciale(s, joueur, m){
     let p=0; cible.sac.forEach((x,n)=>{ if(x.v>cible.sac[p].v) p=n; });
     const perdue=cible.sac.splice(p,1)[0];
     s.phase="revele"; s.apercu=null;
+    journal(s,joueur.nom+" perce le sac de "+cible.nom+".");
     s.evenement={type:"sacperce", carte:perdue, nom:joueur.nom, victime:cible.nom, pour:joueur.id};
     return;
   }
@@ -1424,6 +1581,11 @@ function botJoueSpeciale(s,j){
   if(ml>=0 && (trop ? Math.random()<0.45 : (s.alarmes===0 && Math.random()<0.30))){
     jouerSpeciale(s,j,{index:ml}); return true;
   }
+  const rp=j.main.findIndex(c=>c.k==="rappel");
+  if(rp>=0 && Math.random()<0.45){
+    const partis=s.joueurs.filter(x=>x!==j && x.fui && !x.pris);
+    if(partis.length){ const x=partis[crypto.randomInt(partis.length)]; jouerSpeciale(s,j,{index:rp,cible:x.id}); return true; }
+  }
 
   const i=j.main.findIndex(c=>c.k==="sacperce"||c.k==="balance");
   if(i<0 || (!trop && Math.random()>0.30)) return false;
@@ -1452,6 +1614,8 @@ function botVideSaMain(s,j){
       options.push(()=>{ const x=autres[crypto.randomInt(autres.length)]; jouerSpeciale(s,j,{index:i,cible:x.id}); });
     } else if(c.k==="pickpocket" && autres.some(x=>x.main.length)){
       options.push(()=>{ const p=autres.filter(x=>x.main.length); const x=p[crypto.randomInt(p.length)]; jouerSpeciale(s,j,{index:i,cible:x.id}); });
+    } else if(c.k==="rappel" && s.joueurs.some(x=>x!==j && x.fui && !x.pris)){
+      options.push(()=>{ const p=s.joueurs.filter(x=>x!==j && x.fui && !x.pris); const x=p[crypto.randomInt(p.length)]; jouerSpeciale(s,j,{index:i,cible:x.id}); });
     }
   }
   if(!options.length) return false;
@@ -1507,7 +1671,7 @@ function planifierBot(s){
   if(!j || !estBot(j)) return;
   if(["tour","revele","vol","espion","pickpocket","pickpocketCible"].indexOf(s.phase)<0) return;
   const jeton=++s.jetonBot;
-  const delai = s.phase==="revele" ? 1300 : 900;   // le temps de lire l'écran
+  const delai = s.phase==="revele" ? 2300 : 1700;   // rythme volontairement plus lisible pour suivre la partie
   setTimeout(()=>{
     if(!salons.has(s.code) || s.jetonBot!==jeton) return;
     botAgit(s);
@@ -1549,6 +1713,7 @@ function planifierBot(s){
     switch(m.t){
       case "piocher":   piocher(S,moi); break;
       case "fuir":      fuir(S,moi); break;
+      case "fuiteFantome": fuirFantome(S,moi); break;
       case "continuer": continuer(S,moi); break;
       case "speciale":  jouerSpeciale(S,moi,m); break;
       case "ordre":     ordreEspion(S,moi,m); break;
@@ -1765,10 +1930,21 @@ function actualiserPastilleChat(){
 }
 function actualiserChatSeulement(){
   if(!E) return;
+  var champ=$("#chat-txt"), avaitFocus=champ && document.activeElement===champ;
+  var debut=champ && typeof champ.selectionStart==="number" ? champ.selectionStart : null;
+  var fin=champ && typeof champ.selectionEnd==="number" ? champ.selectionEnd : null;
+  if(champ) chatBrouillon=champ.value;
   var l=$("#chat-liste");
   if(l){
     l.innerHTML=htmlMessagesChat(E.messages||[]);
     l.scrollTop=l.scrollHeight;
+  }
+  if(champ){
+    champ.value=chatBrouillon;
+    if(avaitFocus){
+      try{ champ.focus({preventScroll:true}); }catch(e){ try{champ.focus();}catch(_){} }
+      if(debut!==null) try{ champ.setSelectionRange(debut,fin); }catch(e){}
+    }
   }
   msgNonLus=0;
   actualiserPastilleChat();
@@ -1836,6 +2012,7 @@ function toast(txt,coul){
   setTimeout(function(){ t.remove(); },2200);
 }
 function quitterPartie(){
+  arreterTension();
   if(SOLO){ MOTEUR.arreter(); SOLO=false; }
   fermetureVolontaire=true;
   if(SOCK && SOCK.readyState===1){
@@ -1868,9 +2045,9 @@ function recevoirEtat(etat){
   var nouveauxMessages=etat.messages||[];
   var ancienneCle=JSON.stringify(cleDernierMessage(anciensMessages));
   var nouvelleCle=JSON.stringify(cleDernierMessage(nouveauxMessages));
-  var signature=JSON.stringify([etat.phase,etat.tour,etat.manche,etat.alarmes,
-    etat.restantes,etat.joueurs.map(function(j){return [j.nom,j.total,j.sac.length,j.cartesEnMain,j.fui,j.pris,j.connecte];}),
-    etat.evenement]);
+  var signature=JSON.stringify([etat.phase,etat.tour,etat.manche,etat.alarmes,etat.securite,
+    etat.restantes,etat.joueurs.map(function(j){return [j.nom,j.total,j.sac.length,j.cartesEnMain,j.penalite,j.fui,j.pris,j.connecte];}),
+    etat.evenement,etat.historique]);
   var signatureChat=nouvelleCle;
   var jeuChange=(signature!==DERNIER);
   var chatChange=(signatureChat!==DERNIER_CHAT);
@@ -1911,16 +2088,24 @@ function moiJoueur(){
 }
 function cEstMonTour(){ return E && E.joueurs[E.tour] && E.joueurs[E.tour].id===MOI; }
 function valSac(j){
-  return j.sac.reduce(function(s,c){return s+c.v;},0)
+  var brut=j.sac.reduce(function(s,c){return s+c.v;},0);
+  return Math.max(0,brut-(j.penalite||0))
        + (j.planque||[]).reduce(function(s,c){return s+c.v;},0);
 }
 function valPlanque(j){ return (j.planque||[]).reduce(function(s,c){return s+c.v;},0); }
-function valEnJeu(j){ return j.sac.reduce(function(s,c){return s+c.v;},0); }
+function valEnJeu(j){ return Math.max(0,j.sac.reduce(function(s,c){return s+c.v;},0)-(j.penalite||0)); }
 
 /* ================= EFFETS DÉCLENCHÉS PAR LE SERVEUR ================= */
 function effetsDeLEvenement(avant,etat){
+  if((etat.securite||0) > ((avant&&avant.securite)||0)){
+    var niv=etat.securite||1;
+    toast(niv===1?"🚨 SÉCURITÉ RENFORCÉE — plus d'alarmes, moins d'avantages."
+         :niv===2?"🚨 SÉCURITÉ MAXIMALE — le casse se durcit à deux."
+                 :"🚨 DERNIER BRAQUEUR — chaque pioche devient dangereuse.","#ffd0c8");
+    sonSirene(); vibre([60,50,60]);
+  }
   var ev=etat.evenement;
-  if(!ev) return;
+  if(!ev){ if(etat.phase==="victoire" && (!avant || avant.phase!=="victoire")){ sonVictoire(); pluieDeBillets(42); } return; }
   var memeQuAvant = avant && avant.evenement &&
     JSON.stringify(avant.evenement)===JSON.stringify(ev);
   if(memeQuAvant) return;
@@ -1929,6 +2114,7 @@ function effetsDeLEvenement(avant,etat){
     else { sonPiece(); vibre(16); }
   }else if(ev.type==="alarme"){
     flash("rouge"); secousse();
+    if(ev.perte) toast("Alarme : -"+ev.perte+" point"+(ev.perte>1?"s":"")+" de butin !","#ffada3");
     if(ev.rang>=3){ sonSirene(); vibre([80,60,80,60,240]); }
     else { sonAlarme(2); vibre([40,60,40]); }
   }else if(ev.type==="police"){
@@ -1942,15 +2128,13 @@ function effetsDeLEvenement(avant,etat){
   }else{
     sonSpeciale(); vibre(18);
   }
-  if(etat.phase==="victoire"){ sonVictoire(); pluieDePieces(24); }
+  if(etat.phase==="victoire" && (!avant || avant.phase!=="victoire")){ sonVictoire(); pluieDeBillets(42); }
 }
 
 /* ================= AIGUILLAGE DES ÉCRANS ================= */
 function dessiner(){
   if(!E) return ecranAccueil();
   if(chatOuvert){                      // la discussion reste au premier plan
-    var f=document.getElementById("fenetre-chat");
-    if(f && f.remove) f.remove();
     msgNonLus=0;
   }
   switch(E.phase){
@@ -1967,7 +2151,11 @@ function dessiner(){
   }
 }
 function apresDessin(){
-  if(chatOuvert && E && !SOLO) dessinerChat();
+  if(chatOuvert && E && !SOLO){
+    if(!document.getElementById("fenetre-chat")) dessinerChat();
+    else actualiserChatSeulement();
+  }
+  majTension();
 }
 
 /* ================= ACCUEIL ================= */
@@ -2109,7 +2297,7 @@ function ecranSalon(){
     '<button class="b-sombre" id="quitter" style="margin-top:9px">Quitter</button>';
   if(suisHote){
     Array.prototype.forEach.call(app.querySelectorAll("[data-c]"),function(b){
-      b.onclick=function(){ E.cible=parseInt(b.dataset.c,10); ecranSalon(); };
+      b.onclick=function(){ envoyer({t:"reglage", cible:parseInt(b.dataset.c,10)}); };
     });
     $("#lancer").onclick=function(){ sonPorte(); envoyer({t:"demarrer", cible:E.cible}); };
     $("#plus-bot").onclick=function(){ envoyer({t:"ajouterBot"}); };
@@ -2136,6 +2324,9 @@ function ecranTable(){
     '<div class="ligne" style="padding:46px 0 5px;gap:8px">'+
       '<span class="etiq" style="letter-spacing:.08em;white-space:nowrap">M'+E.manche+(E.solo?"":" · "+E.code)+'</span>'+
       '<span class="etiq" style="letter-spacing:.08em;white-space:nowrap">'+E.restantes+' cartes · '+E.cible+' pts</span></div>'+
+    ((E.securite||0)?'<div class="securite-bandeau">'+
+       ((E.securite===1)?"SÉCURITÉ RENFORCÉE":(E.securite===2)?"SÉCURITÉ MAXIMALE":"DERNIER BRAQUEUR")+
+       '</div>':'')+
     '<div id="matable">'+
       '<div class="lampes">'+lampes+'</div>'+
       '<div class="porte" id="porte"></div>'+
@@ -2147,6 +2338,7 @@ function ecranTable(){
       '</div>'+
       '<div id="sieges"></div>'+
     '</div>'+
+    historiqueHTML()+
     '<div class="centre" style="margin:2px 0 0">'+
       (aMoi?'<div class="titre" style="font-size:19px;letter-spacing:.14em">À TOI DE JOUER</div>'
            :'<div class="etiq">au tour de <b style="color:var(--or-clair);font-size:13px">'+j.nom+'</b>'+
@@ -2156,6 +2348,7 @@ function ecranTable(){
 
   placerSieges();
   habillerPorte();
+  requestAnimationFrame(function(){ ajusterCoffre(); });
   $("#son").onclick=function(){ sonOn=!sonOn; $("#son").innerHTML=iconeSon(); };
   brancherSortir();
   brancherChat();
@@ -2166,6 +2359,12 @@ function ecranTable(){
   }
 }
 
+function historiqueHTML(){
+  var h=(E&&E.historique)||[];
+  if(!h.length) return "";
+  return '<div class="historique-mini"><b>5 DERNIERS TOURS</b>'+
+    h.slice(-5).map(function(x){return '<div>'+echapper(x.texte||"")+'</div>';}).join("")+'</div>';
+}
 /* ---------- ma zone : mon butin, ma main, mes boutons ---------- */
 /* dans combien de tours est-ce à moi ? */
 function maPlace(){
@@ -2202,6 +2401,7 @@ function zoneMoi(moi,aMoi){
         '<span class="lib">· total '+moi.total+'</span></span>'+
     '</div>'+
     '<div class="moi-butin">'+(butin||'<span class="vide" style="font-size:11px;color:var(--brume);font-style:italic">sac vide</span>')+reste+'</div>'+
+    ((moi.penalite||0)?'<div class="hint" style="color:#ffada3;margin:2px 0 5px">Pertes d\'alarme : -'+moi.penalite+' pts</div>':'')+
     '<div class="moi-main">'+main+'</div>'+
     (aMoi?
       '<div class="rangee" style="margin-top:9px">'+
@@ -2327,6 +2527,7 @@ function placerSieges(){
       s.id="siege-"+k;
       z.appendChild(s);
     });
+    requestAnimationFrame(function(){ ajusterCoffre(); });
     return;
   }
 
@@ -2387,10 +2588,15 @@ function choisirCible(moi,c,idx){
     return;
   }
   var marquer=(c.k==="sacperce");
-  var cibles=E.joueurs.filter(function(x){
-    return x.id!==MOI && !x.fui && !x.pris &&
-      ((c.k!=="sacperce"&&c.k!=="vol")||x.sac.length);
-  });
+  var cibles;
+  if(c.k==="rappel"){
+    cibles=E.joueurs.filter(function(x){ return x.id!==MOI && x.fui && !x.pris; });
+  }else{
+    cibles=E.joueurs.filter(function(x){
+      return x.id!==MOI && !x.fui && !x.pris &&
+        ((c.k!=="sacperce"&&c.k!=="vol")||x.sac.length);
+    });
+  }
   if(c.k==="espion"){ envoyer({t:"speciale", index:idx}); return; }
   if(!cibles.length){ toast("Aucune cible possible."); return; }
   app.innerHTML='<div class="voile"><div class="entree">'+htmlCarte(c,"xl")+'</div>'+
@@ -2455,8 +2661,9 @@ function ecranRevelation(){
   }else if(ev.type==="alarme"){
     coul="var(--sang)";
     titre=ev.rang>=3?"TROISIÈME ALARME":(ev.rang===2?"DEUXIÈME ALARME":"PREMIÈRE ALARME");
-    detail=ev.rang>=3?"La police débarque…"
-      :(ev.rang===2?"Encore une et tous ceux qui sont là perdent tout.":"Deux alarmes encore avant la police.");
+    detail=(ev.rang>=3?"La police débarque…"
+      :(ev.rang===2?"Encore une et tous ceux qui sont là perdent tout.":"Deux alarmes encore avant la police."))+
+      (ev.perte?" Alarme : -"+ev.perte+" point"+(ev.perte>1?"s":"")+" de butin.":"");
     visuel=htmlCarte(carte,"xl");
   }else if(ev.type==="speciale"){
     coul=SPECIALES[carte.k].coul;
@@ -2472,6 +2679,14 @@ function ecranRevelation(){
     coul="var(--jade)"; titre=ev.nom+" file avec le magot";
     detail="Sac sécurisé : "+ev.points+" points à l'abri.";
     visuel='<div style="width:76px;height:76px;color:var(--jade)">'+EMBLEMES.fuite+'</div>';
+  }else if(ev.type==="fuiteFantome"){
+    coul="var(--jade)"; titre="FUITE FANTÔME";
+    detail="Tu es parti discrètement avec "+ev.points+" points. Pendant un tour, les autres croient que tu as simplement pioché.";
+    visuel='<div style="width:76px;height:76px;color:var(--jade)">'+EMBLEMES.espion+'</div>';
+  }else if(ev.type==="rappel"){
+    coul="var(--or-clair)"; titre=ev.victime+" REVIENT DANS LE CASSE";
+    detail=ev.nom+" utilise l'unique carte Rappel de la manche.";
+    visuel='<div style="width:76px;height:76px;color:var(--or-clair)">'+EMBLEMES.rappel+'</div>';
   }else if(ev.type==="vole"){
     coul="var(--fuchsia)"; titre=ev.nom+" vole "+ev.carte.v+" à "+ev.victime;
     detail="La carte rejoint son sac — mais elle n'est pas encore à l'abri.";
@@ -2581,10 +2796,13 @@ function ecranEspion(){
       '<div class="choix" id="tr"></div>'+
       '<div class="etiq" style="margin-top:14px;max-width:320px;line-height:1.5">'+
         'chaque carte ira au joueur indiqué, si chacun pioche à son tour</div>'+
-      '<button class="b-or" id="ok" style="margin-top:16px;min-width:220px">Valider cet ordre</button></div>';
+      '<button class="b-or" id="ok" style="margin-top:16px;min-width:220px">Valider cet ordre</button>'+
+      ((E.alarmes===2 && cartes.some(function(c){return c.t==="alarme";}))
+        ?'<button class="b-vert" id="fantome" style="margin-top:10px;min-width:220px">Fuir discrètement</button>':'')+
+      '</div>';
     var p=$("#tr");
     ordre.forEach(function(idx,pos){
-      var qui=noms[pos];
+      var qui=noms[pos] || (E.joueurs.filter(function(x){return !x.fui&&!x.pris&&x.connecte;}).length===1 ? {id:MOI,nom:"TOI"} : null);
       var moiIci=(qui && qui.id===MOI);
       var case_=el("div","case"+(pos===choisie?" choisie":"")+(posees.indexOf(pos)>=0?" pose":"")+(moiIci?" pourmoi":""));
       var d=el("div"); d.innerHTML=htmlCarte(cartes[idx], cartes.length>4?"md":"lg");
@@ -2594,6 +2812,8 @@ function ecranEspion(){
       p.appendChild(case_);
     });
     $("#ok").onclick=function(){ envoyer({t:"ordre", ordre:ordre}); };
+    var fg=$("#fantome");
+    if(fg) fg.onclick=function(){ envoyer({t:"fuiteFantome"}); };
   }
   function toucher(pos){
     if(choisie<0){ choisie=pos; sonSpeciale(); vibre(12); dessine(); return; }
@@ -2703,7 +2923,8 @@ function ecranVictoire(){
     '<h1 class="titre" style="font-size:28px">'+g.nom+'</h1>'+
     '<div class="centre" style="color:var(--or-clair);font-size:15px;letter-spacing:.14em;'+
       'font-family:Cinzel,Georgia,serif">LE CERVEAU DU SIÈCLE</div>'+
-    '<div class="centre chiffre" style="font-size:56px;color:var(--or);margin:6px 0 14px">'+g.total+'</div>'+
+    '<div class="centre chiffre" style="font-size:56px;color:var(--or);margin:6px 0 4px">'+g.total+'</div>'+
+    '<div class="centre etiq" style="margin-bottom:12px">objectif '+E.cible+' points atteint</div>'+
     '<div class="panneau">'+E.classement.slice(1).map(function(c,i){
       return '<div class="ligne"><span>'+(i+2)+'. '+c.nom+'</span><span class="pts">'+c.total+'</span></div>';
     }).join("")+'</div>'+
@@ -3043,8 +3264,9 @@ function ecranRegles(){
       '<p style="font-size:14px;line-height:1.6;margin:6px 0 0">Appuie sur <b>PIOCHER</b> pour tenter une carte de plus, ou sur <b>FUIR</b> pour mettre ton sac à l\'abri. '+
       'Fuir met ton sac à l\'abri, mais tu ne joues plus jusqu\'à la fin de la manche.</p></div>'+
       '<div class="panneau"><b style="color:var(--sang)">Le danger</b>'+
-      '<p style="font-size:14px;line-height:1.6;margin:6px 0 0">Neuf alarmes dans la pioche. À la <b>3ᵉ</b>, la police débarque : '+
-      'tous ceux qui sont encore dans le coffre perdent tout.</p></div>'+
+      '<p style="font-size:14px;line-height:1.6;margin:6px 0 0">Les alarmes font perdre <b>1 à 5 points</b> de butin. À la <b>3ᵉ</b>, la police débarque : '+
+      'tous ceux qui sont encore dans le coffre perdent tout. Quand il ne reste que 3 joueurs ou moins et qu\'un sac atteint 30 points, '+
+      'la <b>Sécurité renforcée</b> ajoute du danger et réduit les avantages.</p></div>'+
       '<div class="panneau"><b style="color:var(--or)">Gagner</b>'+
       '<p style="font-size:14px;line-height:1.6;margin:6px 0 0">Premier à 100 points : le cerveau du siècle !</p></div>'+
       '<div class="panneau"><b style="color:var(--or-clair)">Les cartes spéciales</b>'+sp+'</div>'+
